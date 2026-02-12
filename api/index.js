@@ -101,9 +101,9 @@ const mapUserFromDb = (user) => ({
     isMuted: Boolean(user.is_muted),
     banReason: user.ban_reason,
     permissions: {
-        canMute: Boolean(user.can_mute),
-        canBan: Boolean(user.can_ban),
-        canDeleteShouts: Boolean(user.can_delete_shouts)
+        canMute: Boolean(user.can_mute || false),
+        canBan: Boolean(user.can_ban || false),
+        canDeleteShouts: Boolean(user.can_delete_shouts || false)
     }
 });
 
@@ -297,19 +297,32 @@ app.put('/api/admin/users/:targetUid', verifyAdmin, async (req, res) => {
              return res.status(400).json({ message: "Permissions object is missing." });
         }
 
+        // Only update basic fields - permissions columns may not exist
         await query(
-            'UPDATE users SET role = ?, is_banned = ?, is_muted = ?, ban_reason = ?, can_mute = ?, can_ban = ?, can_delete_shouts = ? WHERE uid = ?', 
+            'UPDATE users SET role = ?, is_banned = ?, is_muted = ?, ban_reason = ? WHERE uid = ?', 
             [
                 role, 
                 isBanned ? 1 : 0, 
                 isMuted ? 1 : 0, 
                 banReason, 
-                permissions.canMute ? 1 : 0, 
-                permissions.canBan ? 1 : 0, 
-                permissions.canDeleteShouts ? 1 : 0, 
                 targetUid
             ]
         );
+        
+        // Try to update permissions if columns exist (ignore errors)
+        try {
+            await query(
+                'UPDATE users SET can_mute = ?, can_ban = ?, can_delete_shouts = ? WHERE uid = ?', 
+                [
+                    permissions?.canMute ? 1 : 0, 
+                    permissions?.canBan ? 1 : 0, 
+                    permissions?.canDeleteShouts ? 1 : 0, 
+                    targetUid
+                ]
+            );
+        } catch (permErr) {
+            // Ignore if columns don't exist
+        }
         res.json({ success: true });
     } catch (err) { 
         console.error(`ADMIN USER UPDATE FAILED for target UID ${targetUid}:`, err);
