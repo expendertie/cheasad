@@ -38,7 +38,7 @@ app.get('/api/health', async (req, res) => {
         await query('SELECT 1');
         res.json({ status: 'ok', database: 'connected' });
     } catch (e) {
-        res.status(500).json({ status: 'error', error: e.message });
+        res.status(500).json({ status: 'error', message: e.message });
     }
 });
 
@@ -134,7 +134,7 @@ app.get('/api/users', async (req, res) => {
         const [users] = await query('SELECT * FROM users');
         res.json(users.map(mapUserFromDb));
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ message: err.message });
     }
 });
 
@@ -146,7 +146,7 @@ app.get('/api/users/:id', async (req, res) => {
         
         res.json(mapUserFromDb(users[0]));
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ message: err.message });
     }
 });
 
@@ -204,7 +204,7 @@ app.get('/api/shouts', async (req, res) => {
         const [results] = await query(sql);
         res.json(results);
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ message: err.message });
     }
 });
 
@@ -221,7 +221,7 @@ app.post('/api/shouts', async (req, res) => {
         const [newShout] = await query(`SELECT s.id, s.message, s.time, u.uid, u.username, u.role, u.avatar_url as avatarUrl, u.avatar_color as avatarColor FROM shouts s JOIN users u ON s.uid = u.uid WHERE s.id = ?`, [result.insertId]);
         res.json(newShout[0]);
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ message: err.message });
     }
 });
 
@@ -253,7 +253,7 @@ const verifyModeratorOrAdmin = async (req, res, next) => {
         
         next();
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        res.status(500).json({ message: e.message });
     }
 };
 
@@ -263,7 +263,7 @@ app.delete('/api/shouts/:shoutId', verifyModeratorOrAdmin, async (req, res) => {
         await query('DELETE FROM shouts WHERE id = ?', [shoutId]);
         res.json({ success: true });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ message: err.message });
     }
 });
 
@@ -276,14 +276,14 @@ const verifyAdmin = async (req, res, next) => {
         const [users] = await query('SELECT role FROM users WHERE uid = ?', [requesterUid]);
         if (users.length === 0 || users[0].role.toLowerCase() !== 'admin') return res.status(403).json({ message: 'Forbidden' });
         next();
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { res.status(500).json({ message: e.message }); }
 };
 
 app.get('/api/admin/users', verifyAdmin, async (req, res) => {
     try {
         const [users] = await query('SELECT * FROM users ORDER BY uid DESC');
         res.json(users.map(mapUserFromDb));
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
 app.put('/api/admin/users/:targetUid', verifyAdmin, async (req, res) => {
@@ -297,16 +297,36 @@ app.put('/api/admin/users/:targetUid', verifyAdmin, async (req, res) => {
             query('SELECT priority FROM users WHERE uid = ?', [targetUid])
         ]);
 
-        if (!requester.length || (target.length && requester[0].priority <= target[0].priority)) {
+        if (!requester.length) {
+             return res.status(403).json({ message: "Could not find requesting admin." });
+        }
+
+        if (target.length && requester[0].priority <= target[0].priority) {
             return res.status(403).json({ message: "You cannot manage a user with equal or higher priority." });
+        }
+
+        if (!permissions) {
+             return res.status(400).json({ message: "Permissions object is missing." });
         }
 
         await query(
             'UPDATE users SET role = ?, is_banned = ?, is_muted = ?, ban_reason = ?, can_mute = ?, can_ban = ?, can_delete_shouts = ? WHERE uid = ?', 
-            [role, isBanned ? 1 : 0, isMuted ? 1 : 0, banReason, permissions.canMute, permissions.canBan, permissions.canDeleteShouts, targetUid]
+            [
+                role, 
+                isBanned ? 1 : 0, 
+                isMuted ? 1 : 0, 
+                banReason, 
+                permissions.canMute ? 1 : 0, 
+                permissions.canBan ? 1 : 0, 
+                permissions.canDeleteShouts ? 1 : 0, 
+                targetUid
+            ]
         );
         res.json({ success: true });
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    } catch (err) { 
+        console.error(`ADMIN USER UPDATE FAILED for target UID ${targetUid}:`, err);
+        res.status(500).json({ message: err.message || 'An unknown server error occurred.' });
+    }
 });
 
 const ensureInviteCodeTable = async () => {
@@ -337,7 +357,7 @@ app.get('/api/admin/invite-codes', verifyAdmin, async (req, res) => {
         await ensureInviteCodeTable();
         const [codes] = await query('SELECT * FROM invite_codes ORDER BY id DESC');
         res.json(codes);
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
 app.post('/api/admin/invite-codes', verifyAdmin, async (req, res) => {
@@ -353,7 +373,7 @@ app.post('/api/admin/invite-codes', verifyAdmin, async (req, res) => {
         res.json({ success: true });
     } catch (err) { 
         console.error('Create invite code error:', err);
-        res.status(500).json({ error: err.message }); 
+        res.status(500).json({ message: err.message }); 
     }
 });
 
@@ -361,7 +381,7 @@ app.delete('/api/admin/invite-codes/:id', verifyAdmin, async (req, res) => {
     try {
         await query('DELETE FROM invite_codes WHERE id = ?', [req.params.id]);
         res.json({ success: true });
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
 // Export the app for Vercel
