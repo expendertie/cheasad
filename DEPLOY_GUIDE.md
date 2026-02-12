@@ -1,3 +1,4 @@
+
 # Инструкция по деплою на Vercel
 
 ## Требования
@@ -41,9 +42,9 @@ VITE_API_URL=/api
    - **Password**
    - **Database name** (например., `thw_club`)
 
-### 2.2 Создайте таблицы в базе данных
+### 2.2 Создайте таблицы в базе данных (для новой установки)
 
-Подключитесь к вашей базе данных и выполните SQL из [`backend/schema.sql`](backend/schema.sql:1):
+Если вы устанавливаете приложение с нуля, подключитесь к вашей базе данных и выполните следующий SQL-код:
 
 ```sql
 -- Создайте базу данных (если ещё не создана)
@@ -61,15 +62,22 @@ CREATE TABLE IF NOT EXISTS users (
     avatar_url VARCHAR(500) DEFAULT '',
     avatar_color VARCHAR(7) DEFAULT '#333333',
     registration_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    
+    priority INT DEFAULT 0,
+    can_mute BOOLEAN DEFAULT FALSE,
+    can_ban BOOLEAN DEFAULT FALSE,
+    can_delete_shouts BOOLEAN DEFAULT FALSE,
+
     location VARCHAR(100) DEFAULT '',
     website VARCHAR(200) DEFAULT '',
-    about TEXT DEFAULT '',
-    dob_day INT DEFAULT 0,
-    dob_month INT DEFAULT 0,
-    dob_year INT DEFAULT 0,
-    show_dob_date BOOLEAN DEFAULT FALSE,
+    about TEXT,
+    dob_day INT,
+    dob_month INT,
+    dob_year INT,
+    show_dob_date BOOLEAN DEFAULT TRUE,
     show_dob_year BOOLEAN DEFAULT FALSE,
     receive_emails BOOLEAN DEFAULT FALSE,
+
     is_banned BOOLEAN DEFAULT FALSE,
     is_muted BOOLEAN DEFAULT FALSE,
     ban_reason VARCHAR(500) DEFAULT ''
@@ -80,7 +88,8 @@ CREATE TABLE IF NOT EXISTS invite_codes (
     id INT AUTO_INCREMENT PRIMARY KEY,
     code VARCHAR(50) UNIQUE NOT NULL,
     uses_left INT DEFAULT 1,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    expires_at DATETIME NULL
 );
 
 -- Таблица сообщений (shouts)
@@ -89,7 +98,7 @@ CREATE TABLE IF NOT EXISTS shouts (
     uid INT NOT NULL,
     message TEXT NOT NULL,
     time DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (uid) REFERENCES users(uid)
+    FOREIGN KEY (uid) REFERENCES users(uid) ON DELETE CASCADE
 );
 
 -- Таблица логов IP
@@ -99,11 +108,27 @@ CREATE TABLE IF NOT EXISTS ip_logs (
     ip_address VARCHAR(45) NOT NULL,
     count INT DEFAULT 1,
     last_seen DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (uid) REFERENCES users(uid)
+    FOREIGN KEY (uid) REFERENCES users(uid) ON DELETE CASCADE
 );
 
 -- Создайте первый пригласительный код
 INSERT INTO invite_codes (code, uses_left) VALUES ('THW2024', -1);
+
+-- ПРИМЕР: Сделать пользователя с UID=1 администратором с высшим приоритетом
+-- UPDATE users SET role = 'Admin', priority = 100, can_mute = 1, can_ban = 1, can_delete_shouts = 1 WHERE uid = 1;
+```
+
+### 2.3 Обновление существующей базы данных (ВАЖНО!)
+
+Если у вас уже есть база данных от предыдущей версии, выполните следующие SQL-команды, чтобы добавить необходимые столбцы в таблицу `users`:
+
+```sql
+-- SQL-команды для обновления существующей таблицы 'users'
+ALTER TABLE `users`
+ADD COLUMN `priority` INT DEFAULT 0,
+ADD COLUMN `can_mute` BOOLEAN DEFAULT FALSE,
+ADD COLUMN `can_ban` BOOLEAN DEFAULT FALSE,
+ADD COLUMN `can_delete_shouts` BOOLEAN DEFAULT FALSE;
 ```
 
 ---

@@ -102,6 +102,7 @@ const mapUserFromDb = (user) => {
         isBanned: Boolean(user.is_banned),
         isMuted: Boolean(user.is_muted),
         banReason: user.ban_reason,
+        priority: user.priority,
         permissions: {
             canMute: Boolean(user.can_mute),
             canBan: Boolean(user.can_ban),
@@ -290,38 +291,30 @@ app.get('/api/admin/users', verifyAdmin, async (req, res) => {
 
 app.put('/api/admin/users/:targetUid', verifyAdmin, async (req, res) => {
     const { role, isBanned, isMuted, banReason, permissions } = req.body;
-    const requesterUid = req.headers['x-admin-uid'];
     const targetUid = req.params.targetUid;
 
     try {
-        // Skip priority check - column doesn't exist in DB
-        
-        // Update basic fields
+        // Priority check system removed as requested to simplify permission saving.
+        // Any admin can now edit any other user.
+
+        if (!permissions) {
+             return res.status(400).json({ message: "Permissions object is missing." });
+        }
+
+        // Single, atomic update for all fields
         await query(
-            'UPDATE users SET role = ?, is_banned = ?, is_muted = ?, ban_reason = ? WHERE uid = ?', 
+            'UPDATE users SET role = ?, is_banned = ?, is_muted = ?, ban_reason = ?, can_mute = ?, can_ban = ?, can_delete_shouts = ? WHERE uid = ?', 
             [
                 role, 
                 isBanned ? 1 : 0, 
                 isMuted ? 1 : 0, 
                 banReason, 
+                permissions.canMute ? 1 : 0, 
+                permissions.canBan ? 1 : 0, 
+                permissions.canDeleteShouts ? 1 : 0, 
                 targetUid
             ]
         );
-        
-        // Try to update permissions if columns exist
-        if (permissions) {
-            try {
-                await query(
-                    'UPDATE users SET can_mute = ?, can_ban = ?, can_delete_shouts = ? WHERE uid = ?', 
-                    [
-                        permissions.canMute ? 1 : 0, 
-                        permissions.canBan ? 1 : 0, 
-                        permissions.canDeleteShouts ? 1 : 0, 
-                        targetUid
-                    ]
-                );
-            } catch (e) { /* ignore - columns may not exist */ }
-        }
         res.json({ success: true });
     } catch (err) { 
         console.error(`ADMIN USER UPDATE FAILED for target UID ${targetUid}:`, err);
