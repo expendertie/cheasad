@@ -244,6 +244,17 @@ app.put('/api/admin/users/:targetUid', verifyAdmin, async (req, res) => {
 // Invite Codes Admin
 app.get('/api/admin/invite-codes', verifyAdmin, async (req, res) => {
     try {
+        // Try to create table if it doesn't exist
+        try {
+            await query(`CREATE TABLE IF NOT EXISTS invite_codes (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                code VARCHAR(50) NOT NULL UNIQUE,
+                uses_left INT NOT NULL DEFAULT 1,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                expires_at DATETIME NULL
+            )`);
+        } catch (tableErr) { console.log('Table might already exist:', tableErr.message); }
+        
         const codes = await query('SELECT * FROM invite_codes ORDER BY id DESC');
         res.json(codes);
     } catch (err) { res.status(500).json({ error: err.message }); }
