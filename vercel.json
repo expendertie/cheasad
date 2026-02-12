@@ -2,11 +2,6 @@
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index.js" }
   ],
-  "functions": {
-    "api/index.js": {
-      "runtime": "nodejs18.x"
-    }
-  },
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "installCommand": "npm install"
