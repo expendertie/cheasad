@@ -14,7 +14,7 @@ app.use(bodyParser.json({ limit: '10mb' }));
 // Vercel doesn't support persistent connections well, but for low traffic pool works ok.
 // IMPORTANT: You must set these ENV variables in Vercel Project Settings.
 const db = mysql.createPool({
-    host: process.env.DB_HOST,
+    host: process.env.DB_HOST?.trim(),
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
