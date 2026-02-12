@@ -263,13 +263,27 @@ app.get('/api/admin/invite-codes', verifyAdmin, async (req, res) => {
 app.post('/api/admin/invite-codes', verifyAdmin, async (req, res) => {
     const { code, usesLeft, expiresAt } = req.body;
     try {
+        // Ensure table exists
+        try {
+            await query(`CREATE TABLE IF NOT EXISTS invite_codes (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                code VARCHAR(50) NOT NULL UNIQUE,
+                uses_left INT NOT NULL DEFAULT 1,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                expires_at DATETIME NULL
+            )`);
+        } catch (tableErr) { console.log('Table check:', tableErr.message); }
+        
         if (expiresAt) {
             await query('INSERT INTO invite_codes (code, uses_left, expires_at) VALUES (?, ?, ?)', [code, usesLeft, expiresAt]);
         } else {
             await query('INSERT INTO invite_codes (code, uses_left) VALUES (?, ?)', [code, usesLeft]);
         }
         res.json({ success: true });
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    } catch (err) { 
+        console.error('Create invite code error:', err);
+        res.status(500).json({ error: err.message }); 
+    }
 });
 
 app.delete('/api/admin/invite-codes/:id', verifyAdmin, async (req, res) => {
