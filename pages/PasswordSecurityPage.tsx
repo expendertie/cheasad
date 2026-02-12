@@ -121,7 +121,7 @@ const PasswordSecurityPage: React.FC = () => {
                             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 px-2">Your Account</h3>
                             <div className="space-y-1">
                                 <Link to={`/members/${currentUser.username}.${currentUser.uid}`} className="block px-3 py-2 text-sm text-gray-400 hover:text-white hover:bg-[#1a1a1d] rounded transition-colors">Your profile</Link>
-                                <a href="#" className="block px-3 py-2 text-sm text-gray-400 hover:text-white hover:bg-[#1a1a1d] rounded transition-colors">Alerts</a>
+                                <span className="block px-3 py-2 text-sm text-gray-600 cursor-not-allowed">Alerts</span>
                                 <a href="#" className="block px-3 py-2 text-sm text-gray-400 hover:text-white hover:bg-[#1a1a1d] rounded transition-colors">Reactions received</a>
                                 <a href="#" className="block px-3 py-2 text-sm text-gray-400 hover:text-white hover:bg-[#1a1a1d] rounded transition-colors">Bookmarks</a>
                                 <a href="#" className="block px-3 py-2 text-sm text-gray-400 hover:text-white hover:bg-[#1a1a1d] rounded transition-colors">Your invitations</a>
@@ -134,7 +134,7 @@ const PasswordSecurityPage: React.FC = () => {
                             <div className="space-y-1">
                                 <Link to="/account/details" className="block px-3 py-2 text-sm text-gray-400 hover:text-white hover:bg-[#1a1a1d] rounded transition-colors">Account details</Link>
                                 <Link to="/account/security" className="block px-3 py-2 text-sm font-semibold text-white bg-[#1a1a1d] border-l-2 border-[var(--accent-pink)] rounded-r transition-colors">Password and security</Link>
-                                <a href="#" className="block px-3 py-2 text-sm text-gray-400 hover:text-white hover:bg-[#1a1a1d] rounded transition-colors">Privacy</a>
+                                <span className="block px-3 py-2 text-sm text-gray-600 cursor-not-allowed">Privacy</span>
                                 <a href="#" className="block px-3 py-2 text-sm text-gray-400 hover:text-white hover:bg-[#1a1a1d] rounded transition-colors">Preferences</a>
                                 <a href="#" className="block px-3 py-2 text-sm text-gray-400 hover:text-white hover:bg-[#1a1a1d] rounded transition-colors">Signature</a>
                                 <a href="#" className="block px-3 py-2 text-sm text-gray-400 hover:text-white hover:bg-[#1a1a1d] rounded transition-colors">Account upgrades</a>
