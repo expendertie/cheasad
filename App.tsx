@@ -14,6 +14,7 @@ import AdminPage from './pages/AdminPage';
 import BannedPage from './pages/BannedPage';
 import Layout from './components/Layout';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import MembersPage from './pages/MembersPage';
 
 function App() {
   return (
@@ -30,6 +31,11 @@ function App() {
             <Route path="/forum" element={
               <ProtectedRoute>
                 <ForumPage />
+              </ProtectedRoute>
+            } />
+             <Route path="/members" element={
+              <ProtectedRoute>
+                <MembersPage />
               </ProtectedRoute>
             } />
             <Route path="/members/:memberId" element={
