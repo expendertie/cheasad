@@ -25,17 +25,11 @@ const db = mysql.createPool({
     ssl: {
         rejectUnauthorized: false // Often needed for cloud DBs (Aiven/PlanetScale)
     }
-});
+}).promise();
 
 // Helper: Promisify DB queries
-const query = (sql, values) => {
-    return new Promise((resolve, reject) => {
-        db.query(sql, values, (err, results) => {
-            if (err) return reject(err);
-            resolve(results);
-        });
-    });
-};
+const query = (sql, values) => db.query(sql, values);
+
 
 // Health Check
 app.get('/api/health', async (req, res) => {
@@ -54,7 +48,7 @@ app.post('/api/auth/register', async (req, res) => {
     const { username, email, password, inviteCode } = req.body;
 
     try {
-        const codes = await query('SELECT * FROM invite_codes WHERE code = ? AND (uses_left > 0 OR uses_left = -1)', [inviteCode]);
+        const [codes] = await query('SELECT * FROM invite_codes WHERE code = ? AND (uses_left > 0 OR uses_left = -1)', [inviteCode]);
         if (codes.length === 0) return res.status(400).json({ message: 'Invalid or expired invite code' });
         
         // Check expiration
@@ -62,13 +56,13 @@ app.post('/api/auth/register', async (req, res) => {
             return res.status(400).json({ message: 'Invite code has expired' });
         }
 
-        const existing = await query('SELECT * FROM users WHERE username = ? OR email = ?', [username, email]);
+        const [existing] = await query('SELECT * FROM users WHERE username = ? OR email = ?', [username, email]);
         if (existing.length > 0) return res.status(400).json({ message: 'Username or Email already exists' });
 
         const hashedPassword = await bcrypt.hash(password, 10);
         const avatarUrl = `https://ui-avatars.com/api/?name=${username}&background=333333&color=cccccc`;
 
-        const result = await query(
+        const [result] = await query(
             'INSERT INTO users (username, email, password_hash, avatar_url) VALUES (?, ?, ?, ?)',
             [username, email, hashedPassword, avatarUrl]
         );
@@ -77,7 +71,7 @@ app.post('/api/auth/register', async (req, res) => {
             await query('UPDATE invite_codes SET uses_left = uses_left - 1 WHERE code = ?', [inviteCode]);
         }
 
-        const newUser = await query('SELECT uid, username, email, role, avatar_url as avatarUrl, avatar_color as avatarColor FROM users WHERE uid = ?', [result.insertId]);
+        const [newUser] = await query('SELECT uid, username, email, role, avatar_url as avatarUrl, avatar_color as avatarColor FROM users WHERE uid = ?', [result.insertId]);
         res.status(201).json(newUser[0]);
 
     } catch (err) {
@@ -89,7 +83,7 @@ app.post('/api/auth/register', async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
     const { identifier, password } = req.body;
     try {
-        const users = await query('SELECT * FROM users WHERE username = ? OR email = ?', [identifier, identifier]);
+        const [users] = await query('SELECT * FROM users WHERE username = ? OR email = ?', [identifier, identifier]);
         if (users.length === 0) return res.status(401).json({ message: 'Invalid credentials' });
 
         const user = users[0];
@@ -127,7 +121,7 @@ app.post('/api/auth/login', async (req, res) => {
 // 3. Get All Users
 app.get('/api/users', async (req, res) => {
     try {
-        const users = await query('SELECT uid, username, email, role, avatar_url as avatarUrl, avatar_color as avatarColor, registration_date as registrationDate FROM users');
+        const [users] = await query('SELECT uid, username, email, role, avatar_url as avatarUrl, avatar_color as avatarColor, registration_date as registrationDate FROM users');
         res.json(users);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -137,7 +131,7 @@ app.get('/api/users', async (req, res) => {
 // 4. Get User By ID
 app.get('/api/users/:id', async (req, res) => {
     try {
-        const users = await query('SELECT * FROM users WHERE uid = ?', [req.params.id]);
+        const [users] = await query('SELECT * FROM users WHERE uid = ?', [req.params.id]);
         if (users.length === 0) return res.status(404).json({ message: 'User not found' });
         
         const u = users[0];
@@ -170,11 +164,44 @@ app.put('/api/users/:uid', async (req, res) => {
     }
 });
 
+// Password Change Endpoint
+app.put('/api/users/:uid/password', async (req, res) => {
+    const { uid } = req.params;
+    const { oldPassword, newPassword } = req.body;
+
+    if (!oldPassword || !newPassword) {
+        return res.status(400).json({ message: 'Old and new passwords are required.' });
+    }
+
+    try {
+        const [users] = await query('SELECT password_hash FROM users WHERE uid = ?', [uid]);
+        if (users.length === 0) {
+            return res.status(404).json({ message: 'User not found.' });
+        }
+
+        const user = users[0];
+        const match = await bcrypt.compare(oldPassword, user.password_hash);
+
+        if (!match) {
+            return res.status(401).json({ message: 'Incorrect existing password.' });
+        }
+
+        const newHashedPassword = await bcrypt.hash(newPassword, 10);
+        await query('UPDATE users SET password_hash = ? WHERE uid = ?', [newHashedPassword, uid]);
+        res.json({ success: true, message: 'Password updated successfully.' });
+
+    } catch (err) {
+        console.error("Password Change Error:", err);
+        res.status(500).json({ message: `Server error: ${err.message}` });
+    }
+});
+
+
 // 6. Get Shouts
 app.get('/api/shouts', async (req, res) => {
     try {
         const sql = `SELECT s.id, s.message, s.time, u.uid, u.username, u.role, u.avatar_url as avatarUrl, u.avatar_color as avatarColor FROM shouts s JOIN users u ON s.uid = u.uid ORDER BY s.id DESC LIMIT 50`;
-        const results = await query(sql);
+        const [results] = await query(sql);
         res.json(results);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -185,13 +212,13 @@ app.get('/api/shouts', async (req, res) => {
 app.post('/api/shouts', async (req, res) => {
     const { uid, message } = req.body;
     try {
-        const userCheck = await query('SELECT role, is_banned, is_muted FROM users WHERE uid = ?', [uid]);
+        const [userCheck] = await query('SELECT role, is_banned, is_muted FROM users WHERE uid = ?', [uid]);
         if (userCheck.length > 0) {
             if (userCheck[0].is_banned || userCheck[0].role === 'Banned') return res.status(403).json({message: 'Banned'});
             if (userCheck[0].is_muted) return res.status(403).json({message: 'Muted'});
         }
-        const result = await query('INSERT INTO shouts (uid, message) VALUES (?, ?)', [uid, message]);
-        const newShout = await query(`SELECT s.id, s.message, s.time, u.uid, u.username, u.role, u.avatar_url as avatarUrl, u.avatar_color as avatarColor FROM shouts s JOIN users u ON s.uid = u.uid WHERE s.id = ?`, [result.insertId]);
+        const [result] = await query('INSERT INTO shouts (uid, message) VALUES (?, ?)', [uid, message]);
+        const [newShout] = await query(`SELECT s.id, s.message, s.time, u.uid, u.username, u.role, u.avatar_url as avatarUrl, u.avatar_color as avatarColor FROM shouts s JOIN users u ON s.uid = u.uid WHERE s.id = ?`, [result.insertId]);
         res.json(newShout[0]);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -203,7 +230,7 @@ app.post('/api/users/:uid/ip', async (req, res) => {
     const { ip } = req.body;
     const uid = req.params.uid;
     try {
-        const existing = await query('SELECT * FROM ip_logs WHERE uid = ? AND ip_address = ?', [uid, ip]);
+        const [existing] = await query('SELECT * FROM ip_logs WHERE uid = ? AND ip_address = ?', [uid, ip]);
         if (existing.length > 0) await query('UPDATE ip_logs SET count = count + 1, last_seen = NOW() WHERE id = ?', [existing[0].id]);
         else await query('INSERT INTO ip_logs (uid, ip_address) VALUES (?, ?)', [uid, ip]);
         res.json({ success: true });
@@ -215,7 +242,7 @@ const verifyAdmin = async (req, res, next) => {
     const requesterUid = req.headers['x-admin-uid'];
     if (!requesterUid) return res.status(401).json({ message: 'Unauthorized' });
     try {
-        const users = await query('SELECT role FROM users WHERE uid = ?', [requesterUid]);
+        const [users] = await query('SELECT role FROM users WHERE uid = ?', [requesterUid]);
         if (users.length === 0 || users[0].role.toLowerCase() !== 'admin') return res.status(403).json({ message: 'Forbidden' });
         next();
     } catch (e) { res.status(500).json({ error: e.message }); }
@@ -223,7 +250,7 @@ const verifyAdmin = async (req, res, next) => {
 
 app.get('/api/admin/users', verifyAdmin, async (req, res) => {
     try {
-        const users = await query('SELECT uid, username, email, role, registration_date, avatar_url, is_banned, is_muted, ban_reason FROM users ORDER BY uid DESC');
+        const [users] = await query('SELECT uid, username, email, role, registration_date, avatar_url, is_banned, is_muted, ban_reason FROM users ORDER BY uid DESC');
         const mapped = users.map(u => ({
             uid: u.uid, username: u.username, email: u.email, role: u.role,
             registrationDate: u.registration_date, avatarUrl: u.avatar_url,
@@ -241,21 +268,34 @@ app.put('/api/admin/users/:targetUid', verifyAdmin, async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Invite Codes Admin
-app.get('/api/admin/invite-codes', verifyAdmin, async (req, res) => {
+const ensureInviteCodeTable = async () => {
     try {
-        // Try to create table if it doesn't exist
-        try {
-            await query(`CREATE TABLE IF NOT EXISTS invite_codes (
+        await query(`
+            CREATE TABLE IF NOT EXISTS invite_codes (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 code VARCHAR(50) NOT NULL UNIQUE,
                 uses_left INT NOT NULL DEFAULT 1,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 expires_at DATETIME NULL
-            )`);
-        } catch (tableErr) { console.log('Table might already exist:', tableErr.message); }
-        
-        const codes = await query('SELECT * FROM invite_codes ORDER BY id DESC');
+            )
+        `);
+        // Add expires_at column if it doesn't exist for backward compatibility
+        const [columns] = await query(
+            "SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'invite_codes' AND COLUMN_NAME = 'expires_at'"
+        );
+        if (columns.length === 0) {
+            await query("ALTER TABLE invite_codes ADD COLUMN expires_at DATETIME NULL");
+        }
+    } catch (tableErr) {
+        console.log('Error ensuring invite_codes table:', tableErr.message);
+    }
+};
+
+// Invite Codes Admin
+app.get('/api/admin/invite-codes', verifyAdmin, async (req, res) => {
+    try {
+        await ensureInviteCodeTable();
+        const [codes] = await query('SELECT * FROM invite_codes ORDER BY id DESC');
         res.json(codes);
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -263,16 +303,7 @@ app.get('/api/admin/invite-codes', verifyAdmin, async (req, res) => {
 app.post('/api/admin/invite-codes', verifyAdmin, async (req, res) => {
     const { code, usesLeft, expiresAt } = req.body;
     try {
-        // Ensure table exists
-        try {
-            await query(`CREATE TABLE IF NOT EXISTS invite_codes (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                code VARCHAR(50) NOT NULL UNIQUE,
-                uses_left INT NOT NULL DEFAULT 1,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                expires_at DATETIME NULL
-            )`);
-        } catch (tableErr) { console.log('Table check:', tableErr.message); }
+        await ensureInviteCodeTable();
         
         if (expiresAt) {
             await query('INSERT INTO invite_codes (code, uses_left, expires_at) VALUES (?, ?, ?)', [code, usesLeft, expiresAt]);
