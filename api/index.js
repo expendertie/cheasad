@@ -80,32 +80,35 @@ app.post('/api/auth/register', async (req, res) => {
     }
 });
 
-const mapUserFromDb = (user) => ({
-    uid: user.uid,
-    username: user.username,
-    email: user.email,
-    role: user.role,
-    registrationDate: user.registration_date,
-    avatarUrl: user.avatar_url,
-    avatarColor: user.avatar_color,
-    location: user.location,
-    website: user.website,
-    about: user.about,
-    dobDay: user.dob_day,
-    dobMonth: user.dob_month,
-    dobYear: user.dob_year,
-    showDobDate: Boolean(user.show_dob_date),
-    showDobYear: Boolean(user.show_dob_year),
-    receiveEmails: Boolean(user.receive_emails),
-    isBanned: Boolean(user.is_banned),
-    isMuted: Boolean(user.is_muted),
-    banReason: user.ban_reason,
-    permissions: {
-        canMute: Boolean(user.can_mute || false),
-        canBan: Boolean(user.can_ban || false),
-        canDeleteShouts: Boolean(user.can_delete_shouts || false)
-    }
-});
+const mapUserFromDb = (user) => {
+    if (!user) return null;
+    return {
+        uid: user.uid,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        registrationDate: user.registration_date,
+        avatarUrl: user.avatar_url,
+        avatarColor: user.avatar_color,
+        location: user.location,
+        website: user.website,
+        about: user.about,
+        dobDay: user.dob_day,
+        dobMonth: user.dob_month,
+        dobYear: user.dob_year,
+        showDobDate: Boolean(user.show_dob_date),
+        showDobYear: Boolean(user.show_dob_year),
+        receiveEmails: Boolean(user.receive_emails),
+        isBanned: Boolean(user.is_banned),
+        isMuted: Boolean(user.is_muted),
+        banReason: user.ban_reason,
+        permissions: {
+            canMute: Boolean(user.can_mute),
+            canBan: Boolean(user.can_ban),
+            canDeleteShouts: Boolean(user.can_delete_shouts)
+        }
+    };
+};
 
 
 // 2. Login
@@ -291,13 +294,9 @@ app.put('/api/admin/users/:targetUid', verifyAdmin, async (req, res) => {
     const targetUid = req.params.targetUid;
 
     try {
-        // Skip priority check for now
-
-        if (!permissions) {
-             return res.status(400).json({ message: "Permissions object is missing." });
-        }
-
-        // Only update basic fields - permissions columns may not exist
+        // Skip priority check - column doesn't exist in DB
+        
+        // Update basic fields
         await query(
             'UPDATE users SET role = ?, is_banned = ?, is_muted = ?, ban_reason = ? WHERE uid = ?', 
             [
@@ -309,19 +308,19 @@ app.put('/api/admin/users/:targetUid', verifyAdmin, async (req, res) => {
             ]
         );
         
-        // Try to update permissions if columns exist (ignore errors)
-        try {
-            await query(
-                'UPDATE users SET can_mute = ?, can_ban = ?, can_delete_shouts = ? WHERE uid = ?', 
-                [
-                    permissions?.canMute ? 1 : 0, 
-                    permissions?.canBan ? 1 : 0, 
-                    permissions?.canDeleteShouts ? 1 : 0, 
-                    targetUid
-                ]
-            );
-        } catch (permErr) {
-            // Ignore if columns don't exist
+        // Try to update permissions if columns exist
+        if (permissions) {
+            try {
+                await query(
+                    'UPDATE users SET can_mute = ?, can_ban = ?, can_delete_shouts = ? WHERE uid = ?', 
+                    [
+                        permissions.canMute ? 1 : 0, 
+                        permissions.canBan ? 1 : 0, 
+                        permissions.canDeleteShouts ? 1 : 0, 
+                        targetUid
+                    ]
+                );
+            } catch (e) { /* ignore - columns may not exist */ }
         }
         res.json({ success: true });
     } catch (err) { 
