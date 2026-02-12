@@ -1,5 +1,5 @@
 
-import type { User } from '../types';
+import type { User, UserPermissions } from '../types';
 
 const API_URL = '/api/admin';
 
@@ -20,13 +20,16 @@ export const adminService = {
         return await response.json();
     },
 
-    updateUser: async (adminUid: number, targetUid: number, data: { role: string, isBanned: boolean, isMuted: boolean, banReason: string }): Promise<void> => {
+    updateUser: async (adminUid: number, targetUid: number, data: { role: string, isBanned: boolean, isMuted: boolean, banReason: string, permissions: UserPermissions }): Promise<void> => {
         const response = await fetch(`${API_URL}/users/${targetUid}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json', 'x-admin-uid': adminUid.toString() },
             body: JSON.stringify(data)
         });
-        if (!response.ok) throw new Error("Failed to update user");
+        if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(errData.message || "Failed to update user");
+        }
     },
 
     getInviteCodes: async (adminUid: number): Promise<InviteCode[]> => {

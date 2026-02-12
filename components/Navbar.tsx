@@ -39,7 +39,7 @@ const Navbar: React.FC = () => {
     const navItems = [
         { name: 'FORUMS', path: '/forum', icon: 'ph-chats' },
         { name: 'MEMBERS', path: '/members', icon: 'ph-users' },
-        { name: 'DISCORD', path: '#', icon: 'ph-discord-logo' },
+        { name: 'DISCORD', path: 'https://discord.gg/65YTBNh9', icon: 'ph-discord-logo' },
         { name: 'WORKSHOP', path: '#', icon: 'ph-wrench' },
         { name: 'STORE', path: '#', icon: 'ph-shopping-cart' },
         { name: 'ROULETTE', path: '#', icon: 'ph-club' },
@@ -72,7 +72,25 @@ const Navbar: React.FC = () => {
                     )}
 
                     {navItems.map((item) => {
-                        const isActive = location.pathname.startsWith(item.path) && item.path !== '#';
+                        const isExternal = item.path.startsWith('http');
+                        const isPlaceholder = item.path === '#';
+
+                        if (isExternal) {
+                            return (
+                                <a
+                                    key={item.name}
+                                    href={item.path}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="relative px-4 py-5 text-sm font-bold tracking-wide transition-all duration-300 flex items-center gap-2 group text-gray-400 hover:text-white"
+                                >
+                                    <i className={`${item.icon} text-lg mb-0.5 group-hover:text-[var(--accent-pink)] transition-colors`}></i>
+                                    {item.name}
+                                </a>
+                            );
+                        }
+
+                        const isActive = location.pathname.startsWith(item.path) && !isPlaceholder;
                         return (
                             <Link 
                                 key={item.name} 
@@ -80,7 +98,7 @@ const Navbar: React.FC = () => {
                                 className={`
                                     relative px-4 py-5 text-sm font-bold tracking-wide transition-all duration-300 flex items-center gap-2 group
                                     ${isActive ? 'text-white' : 'text-gray-400 hover:text-white'}
-                                    ${item.path === '#' ? 'cursor-not-allowed opacity-50' : ''}
+                                    ${isPlaceholder ? 'cursor-not-allowed opacity-50' : ''}
                                 `}
                             >
                                 <i className={`${item.icon} text-lg mb-0.5 ${isActive ? 'text-[var(--accent-pink)]' : 'group-hover:text-[var(--accent-pink)] transition-colors'}`}></i>

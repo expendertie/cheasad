@@ -4,7 +4,7 @@ import Navbar from '../components/Navbar';
 import Button from '../components/Button';
 import { useAuth } from '../hooks/useAuth';
 import { adminService, InviteCode } from '../services/adminService';
-import { User, Role } from '../types';
+import { User, Role, UserPermissions } from '../types';
 
 const AdminPage: React.FC = () => {
     const { currentUser } = useAuth();
@@ -24,6 +24,9 @@ const AdminPage: React.FC = () => {
     const [editBanned, setEditBanned] = useState(false);
     const [editMuted, setEditMuted] = useState(false);
     const [editReason, setEditReason] = useState('');
+    const [editPermissions, setEditPermissions] = useState<UserPermissions>({
+        canMute: false, canBan: false, canDeleteShouts: false
+    });
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
@@ -86,6 +89,7 @@ const AdminPage: React.FC = () => {
         setEditBanned(!!user.isBanned);
         setEditMuted(!!user.isMuted);
         setEditReason(user.banReason || '');
+        setEditPermissions(user.permissions || { canMute: false, canBan: false, canDeleteShouts: false });
     };
 
     const handleRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -112,15 +116,20 @@ const AdminPage: React.FC = () => {
                 role: editRole,
                 isBanned: editBanned,
                 isMuted: editMuted,
-                banReason: editReason
+                banReason: editReason,
+                permissions: editPermissions
             });
             setEditingUser(null);
             fetchData();
-        } catch (error) {
-            alert("Failed to update user");
+        } catch (error: any) {
+            alert(error.message || "Failed to update user");
         } finally {
             setSaving(false);
         }
+    };
+
+    const handlePermissionChange = (perm: keyof UserPermissions, value: boolean) => {
+        setEditPermissions(prev => ({ ...prev, [perm]: value }));
     };
 
     const filteredUsers = users.filter(u => 
@@ -242,7 +251,9 @@ const AdminPage: React.FC = () => {
                                                     <td className="px-6 py-4 whitespace-nowrap text-right">
                                                         <button 
                                                             onClick={() => handleEditClick(user)}
-                                                            className="px-3 py-1.5 bg-[#1a1a1d] border border-gray-700 hover:border-[var(--accent-pink)] hover:text-[var(--accent-pink)] rounded text-xs font-semibold transition-all"
+                                                            disabled={currentUser != null && user.priority >= currentUser.priority}
+                                                            className="px-3 py-1.5 bg-[#1a1a1d] border border-gray-700 hover:border-[var(--accent-pink)] hover:text-[var(--accent-pink)] rounded text-xs font-semibold transition-all disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:border-gray-700 disabled:hover:text-current"
+                                                            title={currentUser != null && user.priority >= currentUser.priority ? "Cannot manage user with higher or equal priority" : "Manage User"}
                                                         >
                                                             Manage
                                                         </button>
@@ -389,7 +400,7 @@ const AdminPage: React.FC = () => {
 
             {editingUser && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-                    <div className="bg-[#141416] w-full max-w-md border border-gray-700 rounded-lg shadow-[0_0_50px_rgba(0,0,0,0.8)] animate-in fade-in zoom-in duration-200">
+                    <div className="bg-[#141416] w-full max-w-lg border border-gray-700 rounded-lg shadow-[0_0_50px_rgba(0,0,0,0.8)] animate-in fade-in zoom-in duration-200">
                         <div className="flex justify-between items-center p-4 border-b border-gray-800 bg-[#1a1a1d] rounded-t-lg">
                             <h3 className="text-white font-bold flex items-center gap-2">
                                 <i className="ph-pencil-simple"></i> Edit User: <span className="text-[var(--accent-pink)]">{editingUser.username}</span>
@@ -434,6 +445,24 @@ const AdminPage: React.FC = () => {
                                     />
                                     <span className={editMuted ? 'text-orange-400 font-bold' : 'text-gray-300'}>Mute User</span>
                                 </label>
+                            </div>
+
+                             <div>
+                                <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Permissions</label>
+                                <div className="space-y-2 p-3 bg-[#0d0d0f] border border-gray-700 rounded">
+                                    <label className="flex items-center gap-3 cursor-pointer">
+                                        <input type="checkbox" checked={editPermissions.canBan} onChange={e => handlePermissionChange('canBan', e.target.checked)} className="w-4 h-4 accent-[var(--accent-pink)]" />
+                                        <span className="text-sm text-gray-300">Can Ban Users</span>
+                                    </label>
+                                     <label className="flex items-center gap-3 cursor-pointer">
+                                        <input type="checkbox" checked={editPermissions.canMute} onChange={e => handlePermissionChange('canMute', e.target.checked)} className="w-4 h-4 accent-[var(--accent-pink)]" />
+                                        <span className="text-sm text-gray-300">Can Mute Users</span>
+                                    </label>
+                                     <label className="flex items-center gap-3 cursor-pointer">
+                                        <input type="checkbox" checked={editPermissions.canDeleteShouts} onChange={e => handlePermissionChange('canDeleteShouts', e.target.checked)} className="w-4 h-4 accent-[var(--accent-pink)]" />
+                                        <span className="text-sm text-gray-300">Can Delete Shouts</span>
+                                    </label>
+                                </div>
                             </div>
 
                             {(editBanned || editMuted || editRole === Role.BANNED) && (

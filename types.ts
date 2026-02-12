@@ -13,6 +13,12 @@ export interface IpLog {
   latest: string; // ISO Date
 }
 
+export interface UserPermissions {
+  canMute: boolean;
+  canBan: boolean;
+  canDeleteShouts: boolean;
+}
+
 export interface User {
   uid: number;
   username: string;
@@ -23,6 +29,10 @@ export interface User {
   avatarUrl: string;
   avatarColor?: string;
   
+  // Access Control
+  priority: number;
+  permissions?: UserPermissions;
+
   // Extended Profile Fields
   location?: string;
   website?: string;

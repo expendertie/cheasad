@@ -90,12 +90,28 @@ const ForumPage: React.FC = () => {
       }
   };
 
+  const handleDeleteShout = async (shoutId: number) => {
+      if (!currentUser) return;
+      if (!window.confirm("Are you sure you want to delete this shout?")) return;
+
+      try {
+          await dbService.deleteShout(shoutId, currentUser.uid);
+          setShouts(prevShouts => prevShouts.filter(s => s.id !== shoutId));
+      } catch (error) {
+          console.error("Failed to delete shout", error);
+          alert("You do not have permission to delete this shout.");
+      }
+  };
+
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
       if (e.key === 'Enter' && !e.shiftKey) {
           e.preventDefault();
           handlePostShout();
       }
   }
+
+  const canDeleteShouts = currentUser?.role === Role.ADMIN || currentUser?.permissions?.canDeleteShouts;
 
   return (
     <>
@@ -145,13 +161,18 @@ const ForumPage: React.FC = () => {
                                     <Link to={`/members/${shout.username}.${shout.uid}`} className={`font-bold text-xs ${getRoleColor(shout.role)} hover:underline whitespace-nowrap shrink-0`}>
                                         {shout.username}:
                                     </Link>
-                                    <span className="text-gray-300 text-xs truncate shrink" title={shout.message}>
+                                    <span className="text-gray-300 text-xs shrink" title={shout.message}>
                                         {shout.message}
                                     </span>
-                                    <span className="text-[10px] text-gray-600 whitespace-nowrap shrink-0">
-                                        {formatTimeAgo(shout.time)}
-                                    </span>
                                 </div>
+                                <span className="text-[10px] text-gray-600 whitespace-nowrap shrink-0 ml-auto mr-2">
+                                    {formatTimeAgo(shout.time)}
+                                </span>
+                                {canDeleteShouts && (
+                                    <button onClick={() => handleDeleteShout(shout.id)} className="text-gray-700 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity" title="Delete Shout">
+                                        <i className="ph-trash text-xs"></i>
+                                    </button>
+                                )}
                             </div>
                         ))}
                     </div>
