@@ -38,12 +38,12 @@ const Navbar: React.FC = () => {
 
     const navItems = [
         { name: 'FORUMS', path: '/forum', icon: 'ph-chats' },
-        { name: 'MEMBERS', path: '#', icon: 'ph-users' },
-        { name: 'DISCORD', path: '#', icon: 'ph-discord-logo' },
-        { name: 'WORKSHOP', path: '#', icon: 'ph-wrench' },
-        { name: 'STORE', path: '#', icon: 'ph-shopping-cart' },
-        { name: 'ROULETTE', path: '#', icon: 'ph-club' },
-        { name: 'WALLET', path: '#', icon: 'ph-wallet' },
+        { name: 'MEMBERS', path: '/forum', icon: 'ph-users' },
+        { name: 'DISCORD', path: '/forum', icon: 'ph-discord-logo' },
+        { name: 'WORKSHOP', path: '/forum', icon: 'ph-wrench' },
+        { name: 'STORE', path: '/forum', icon: 'ph-shopping-cart' },
+        { name: 'ROULETTE', path: '/forum', icon: 'ph-club' },
+        { name: 'WALLET', path: '/forum', icon: 'ph-wallet' },
     ];
 
     const isAdmin = currentUser && currentUser.role.toLowerCase() === 'admin';
