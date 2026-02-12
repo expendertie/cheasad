@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -19,7 +19,7 @@ import MembersPage from './pages/MembersPage';
 function App() {
   return (
     <AuthProvider>
-      <HashRouter>
+      <BrowserRouter>
         <Layout>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
@@ -63,7 +63,7 @@ function App() {
             <Route path="/" element={<Navigate to="/login" />} />
           </Routes>
         </Layout>
-      </HashRouter>
+      </BrowserRouter>
     </AuthProvider>
   );
 }
