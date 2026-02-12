@@ -167,24 +167,24 @@ const Navbar: React.FC = () => {
                                     {/* Links Section */}
                                     <div className="p-2 grid grid-cols-2 gap-x-1 text-sm bg-[#161618]">
                                         <div className="flex flex-col">
-                                            <a href="#" className="px-3 py-1.5 text-gray-400 hover:text-white hover:bg-[#222] rounded transition-colors">News feed</a>
-                                            <a href="#" className="px-3 py-1.5 text-gray-400 hover:text-white hover:bg-[#222] rounded transition-colors">Your content</a>
-                                            <a href="#" className="px-3 py-1.5 text-gray-400 hover:text-white hover:bg-[#222] rounded transition-colors">Reactions received</a>
+                                            <span className="px-3 py-1.5 text-gray-500 opacity-50 cursor-not-allowed">News feed</span>
+                                            <span className="px-3 py-1.5 text-gray-500 opacity-50 cursor-not-allowed">Your content</span>
+                                            <span className="px-3 py-1.5 text-gray-500 opacity-50 cursor-not-allowed">Reactions received</span>
                                             <div className="h-px bg-gray-800 my-1 mx-2"></div>
                                             <Link to="/account/details" onClick={() => setIsMenuOpen(false)} className="px-3 py-1.5 text-gray-400 hover:text-white hover:bg-[#222] rounded transition-colors">Account details</Link>
                                             <Link to="/account/security" onClick={() => setIsMenuOpen(false)} className="px-3 py-1.5 text-gray-400 hover:text-white hover:bg-[#222] rounded transition-colors">Password and security</Link>
-                                            <a href="#" className="px-3 py-1.5 text-gray-400 hover:text-white hover:bg-[#222] rounded transition-colors">Privacy</a>
-                                            <a href="#" className="px-3 py-1.5 text-gray-400 hover:text-white hover:bg-[#222] rounded transition-colors">Preferences</a>
-                                            <a href="#" className="px-3 py-1.5 text-gray-400 hover:text-white hover:bg-[#222] rounded transition-colors">Signature</a>
+                                            <span className="px-3 py-1.5 text-gray-500 opacity-50 cursor-not-allowed">Privacy</span>
+                                            <span className="px-3 py-1.5 text-gray-500 opacity-50 cursor-not-allowed">Preferences</span>
+                                            <span className="px-3 py-1.5 text-gray-500 opacity-50 cursor-not-allowed">Signature</span>
                                         </div>
                                         <div className="flex flex-col">
-                                            <a href="#" className="px-3 py-1.5 text-gray-400 hover:text-white hover:bg-[#222] rounded transition-colors">Your tickets</a>
-                                            <a href="#" className="px-3 py-1.5 text-gray-400 hover:text-white hover:bg-[#222] rounded transition-colors">Your invitations</a>
+                                            <span className="px-3 py-1.5 text-gray-500 opacity-50 cursor-not-allowed">Your tickets</span>
+                                            <span className="px-3 py-1.5 text-gray-500 opacity-50 cursor-not-allowed">Your invitations</span>
                                             <div className="h-px bg-gray-800 my-1 mx-2"></div>
-                                            <a href="#" className="px-3 py-1.5 text-gray-400 hover:text-white hover:bg-[#222] rounded transition-colors">Account upgrades</a>
-                                            <a href="#" className="px-3 py-1.5 text-gray-400 hover:text-white hover:bg-[#222] rounded transition-colors">Connected accounts</a>
-                                            <a href="#" className="px-3 py-1.5 text-gray-400 hover:text-white hover:bg-[#222] rounded transition-colors">Following</a>
-                                            <a href="#" className="px-3 py-1.5 text-gray-400 hover:text-white hover:bg-[#222] rounded transition-colors">Ignoring</a>
+                                            <span className="px-3 py-1.5 text-gray-500 opacity-50 cursor-not-allowed">Account upgrades</span>
+                                            <span className="px-3 py-1.5 text-gray-500 opacity-50 cursor-not-allowed">Connected accounts</span>
+                                            <span className="px-3 py-1.5 text-gray-500 opacity-50 cursor-not-allowed">Following</span>
+                                            <span className="px-3 py-1.5 text-gray-500 opacity-50 cursor-not-allowed">Ignoring</span>
                                         </div>
                                     </div>
 
