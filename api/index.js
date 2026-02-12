@@ -1,8 +1,8 @@
-const express = require('express');
-const mysql = require('mysql2');
-const cors = require('cors');
-const bodyParser = require('body-parser');
-const bcrypt = require('bcryptjs');
+import express from 'express';
+import mysql from 'mysql2';
+import cors from 'cors';
+import bodyParser from 'body-parser';
+import bcrypt from 'bcryptjs';
 
 const app = express();
 
@@ -237,4 +237,4 @@ app.put('/api/admin/users/:targetUid', verifyAdmin, async (req, res) => {
 });
 
 // Export the app for Vercel
-module.exports = app;
+export default app;
