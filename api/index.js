@@ -15,10 +15,10 @@ app.use(bodyParser.json({ limit: '10mb' }));
 // IMPORTANT: You must set these ENV variables in Vercel Project Settings.
 const db = mysql.createPool({
     host: process.env.DB_HOST?.trim(),
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    port: process.env.DB_PORT || 3306,
+    user: process.env.DB_USER?.trim(),
+    password: process.env.DB_PASSWORD?.trim(),
+    database: process.env.DB_NAME?.trim(),
+    port: parseInt(process.env.DB_PORT?.trim() || '3306'),
     waitForConnections: true,
     connectionLimit: 5, // Lower limit for serverless
     queueLimit: 0,
