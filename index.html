@@ -1,0 +1,115 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>THW CLUB</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-dark: #0d0d0f;
+            --panel-bg: rgba(20, 20, 22, 0.5);
+            --text-light: #e0e0e0;
+            --text-dark: #888;
+            --accent-pink: #f02c84;
+            --accent-purple: #8a2be2;
+            --accent-cyan: #00ffff;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--bg-dark);
+            background-image: linear-gradient(-45deg, #0d0d0f, var(--accent-purple), #0d0d0f, var(--accent-pink));
+            background-size: 400% 400%;
+            animation: animatedGradient 20s ease infinite;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #333; 
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-pink); 
+        }
+        
+        /* Utility class to force scrollbar style if needed specifically */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #444;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-pink);
+        }
+
+        @keyframes animatedGradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes glowPulse {
+            0%, 100% { box-shadow: 0 0 15px var(--accent-pink), 0 0 5px var(--accent-pink); }
+            50% { box-shadow: 0 0 25px var(--accent-pink), 0 0 10px var(--accent-pink); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.6s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+        }
+
+        .glass-panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(240, 44, 132, 0.2);
+            box-shadow: 0 0 30px rgba(240, 44, 132, 0.25);
+            transition: all 0.3s ease;
+        }
+
+        .text-glow {
+            text-shadow: 0 0 8px var(--accent-pink), 0 0 10px rgba(240, 44, 132, 0.7);
+        }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react-router-dom": "https://esm.sh/react-router-dom@^7.11.0",
+    "vite": "https://esm.sh/vite@^7.3.0",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body class="bg-black text-gray-200">
+    <div id="root"></div>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>
