@@ -17,7 +17,7 @@ const db = mysql.createPool({
     host: process.env.DB_HOST?.trim(),
     user: process.env.DB_USER?.trim(),
     password: process.env.DB_PASSWORD?.trim(),
-    database: process.env.DB_NAME?.trim(),
+    database: process.env.DB_NAME?.trim().replace(/"/g, ''),
     port: Number(process.env.DB_PORT) || 16586,
     waitForConnections: true,
     connectionLimit: 5, // Lower limit for serverless
