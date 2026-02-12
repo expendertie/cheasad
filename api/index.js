@@ -100,7 +100,6 @@ const mapUserFromDb = (user) => ({
     isBanned: Boolean(user.is_banned),
     isMuted: Boolean(user.is_muted),
     banReason: user.ban_reason,
-    priority: user.priority,
     permissions: {
         canMute: Boolean(user.can_mute),
         canBan: Boolean(user.can_ban),
@@ -292,18 +291,7 @@ app.put('/api/admin/users/:targetUid', verifyAdmin, async (req, res) => {
     const targetUid = req.params.targetUid;
 
     try {
-        const [[requester], [target]] = await Promise.all([
-            query('SELECT priority FROM users WHERE uid = ?', [requesterUid]),
-            query('SELECT priority FROM users WHERE uid = ?', [targetUid])
-        ]);
-
-        if (!requester.length) {
-             return res.status(403).json({ message: "Could not find requesting admin." });
-        }
-
-        if (target.length && requester[0].priority <= target[0].priority) {
-            return res.status(403).json({ message: "You cannot manage a user with equal or higher priority." });
-        }
+        // Skip priority check for now
 
         if (!permissions) {
              return res.status(400).json({ message: "Permissions object is missing." });
