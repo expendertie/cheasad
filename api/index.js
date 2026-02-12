@@ -56,6 +56,11 @@ app.post('/api/auth/register', async (req, res) => {
     try {
         const codes = await query('SELECT * FROM invite_codes WHERE code = ? AND (uses_left > 0 OR uses_left = -1)', [inviteCode]);
         if (codes.length === 0) return res.status(400).json({ message: 'Invalid or expired invite code' });
+        
+        // Check expiration
+        if (codes[0].expires_at && new Date(codes[0].expires_at) < new Date()) {
+            return res.status(400).json({ message: 'Invite code has expired' });
+        }
 
         const existing = await query('SELECT * FROM users WHERE username = ? OR email = ?', [username, email]);
         if (existing.length > 0) return res.status(400).json({ message: 'Username or Email already exists' });
@@ -232,6 +237,33 @@ app.put('/api/admin/users/:targetUid', verifyAdmin, async (req, res) => {
     const { role, isBanned, isMuted, banReason } = req.body;
     try {
         await query('UPDATE users SET role = ?, is_banned = ?, is_muted = ?, ban_reason = ? WHERE uid = ?', [role, isBanned ? 1 : 0, isMuted ? 1 : 0, banReason, req.params.targetUid]);
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Invite Codes Admin
+app.get('/api/admin/invite-codes', verifyAdmin, async (req, res) => {
+    try {
+        const codes = await query('SELECT * FROM invite_codes ORDER BY id DESC');
+        res.json(codes);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/admin/invite-codes', verifyAdmin, async (req, res) => {
+    const { code, usesLeft, expiresAt } = req.body;
+    try {
+        if (expiresAt) {
+            await query('INSERT INTO invite_codes (code, uses_left, expires_at) VALUES (?, ?, ?)', [code, usesLeft, expiresAt]);
+        } else {
+            await query('INSERT INTO invite_codes (code, uses_left) VALUES (?, ?)', [code, usesLeft]);
+        }
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/admin/invite-codes/:id', verifyAdmin, async (req, res) => {
+    try {
+        await query('DELETE FROM invite_codes WHERE id = ?', [req.params.id]);
         res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
