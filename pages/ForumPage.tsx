@@ -111,7 +111,9 @@ const ForumPage: React.FC = () => {
       }
   }
 
-  const canDeleteShouts = currentUser?.role === Role.ADMIN || currentUser?.permissions?.canDeleteShouts;
+  // Show delete button if user is admin
+  const userRole = currentUser?.role?.toString().toLowerCase() || '';
+  const canDeleteShouts = currentUser && (userRole === 'admin' || currentUser.permissions?.canDeleteShouts === true);
 
   return (
     <>
