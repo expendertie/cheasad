@@ -284,6 +284,7 @@ const verifyAdmin = async (req, res, next) => {
 
 app.get('/api/admin/users', verifyAdmin, async (req, res) => {
     try {
+        await ensureUserColumns();
         const [users] = await query('SELECT * FROM users ORDER BY uid DESC');
         res.json(users.map(mapUserFromDb));
     } catch (err) { res.status(500).json({ message: err.message }); }
@@ -294,8 +295,9 @@ app.put('/api/admin/users/:targetUid', verifyAdmin, async (req, res) => {
     const targetUid = req.params.targetUid;
 
     try {
-        // Priority check system removed as requested to simplify permission saving.
-        // Any admin can now edit any other user.
+        await ensureUserColumns();
+        
+        // Any admin can edit any user
 
         if (!permissions) {
              return res.status(400).json({ message: "Permissions object is missing." });
@@ -321,6 +323,28 @@ app.put('/api/admin/users/:targetUid', verifyAdmin, async (req, res) => {
         res.status(500).json({ message: err.message || 'An unknown server error occurred.' });
     }
 });
+
+const ensureUserColumns = async () => {
+    try {
+        // Add priority column if not exists
+        try {
+            await query("ALTER TABLE users ADD COLUMN priority INT DEFAULT 0");
+        } catch (e) { /* ignore */ }
+        
+        // Add permission columns if not exist
+        try {
+            await query("ALTER TABLE users ADD COLUMN can_mute TINYINT(1) DEFAULT 0");
+        } catch (e) { /* ignore */ }
+        try {
+            await query("ALTER TABLE users ADD COLUMN can_ban TINYINT(1) DEFAULT 0");
+        } catch (e) { /* ignore */ }
+        try {
+            await query("ALTER TABLE users ADD COLUMN can_delete_shouts TINYINT(1) DEFAULT 0");
+        } catch (e) { /* ignore */ }
+    } catch (err) {
+        console.log('Error ensuring user columns:', err.message);
+    }
+};
 
 const ensureInviteCodeTable = async () => {
     try {
