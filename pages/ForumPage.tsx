@@ -111,9 +111,14 @@ const ForumPage: React.FC = () => {
       }
   }
 
-  // Show delete button for admin (debug: always show for now)
-  const userRole = currentUser?.role?.toString().toLowerCase() || '';
-  const canDeleteShouts = currentUser && (userRole === 'admin');
+  // Check if user can delete shouts (admin or moderator)
+  const canDeleteShouts = currentUser && (
+    currentUser.role === Role.ADMIN || 
+    currentUser.role === Role.MODERATOR ||
+    currentUser.role?.toLowerCase() === 'admin' ||
+    currentUser.role?.toLowerCase() === 'moderator' ||
+    currentUser.permissions?.canDeleteShouts === true
+  );
 
   return (
     <>
@@ -170,7 +175,7 @@ const ForumPage: React.FC = () => {
                                 <span className="text-[10px] text-gray-600 whitespace-nowrap shrink-0 ml-auto mr-2">
                                     {formatTimeAgo(shout.time)}
                                 </span>
-                                {currentUser && (
+                                {canDeleteShouts && (
                                     <button onClick={() => handleDeleteShout(shout.id)} className="text-red-600 hover:text-red-400 ml-2" title="Delete Shout">
                                         <i className="ph-trash text-xs"></i>
                                     </button>
