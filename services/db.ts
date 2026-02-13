@@ -44,18 +44,17 @@ export const dbService = {
         return await response.json();
     },
 
-    deleteShout: async (shoutId: number, userUid: number): Promise<void> => {
+    deleteShout: async (shoutId: number, requesterUid: number): Promise<void> => {
         const response = await fetch(`${API_URL}/shouts/${shoutId}`, {
             method: 'DELETE',
-            headers: { 
+            headers: {
                 'Content-Type': 'application/json',
-                'x-user-uid': userUid.toString()
-            },
+                'x-user-uid': requesterUid.toString()
+            }
         });
-
         if (!response.ok) {
-            const data = await response.json();
-            throw new Error(data.message || "Failed to delete shout");
+            const errorData = await response.json();
+            throw new Error(errorData.message || "Failed to delete shout");
         }
     },
 

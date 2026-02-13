@@ -1,3 +1,4 @@
+
 import express from 'express';
 import mysql from 'mysql2';
 import cors from 'cors';
@@ -79,6 +80,37 @@ app.post('/api/auth/register', async (req, res) => {
     }
 });
 
+const mapUserFromDb = (user) => {
+    if (!user) return null;
+    return {
+        uid: user.uid,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        registrationDate: user.registration_date,
+        avatarUrl: user.avatar_url,
+        avatarColor: user.avatar_color,
+        location: user.location,
+        website: user.website,
+        about: user.about,
+        dobDay: user.dob_day,
+        dobMonth: user.dob_month,
+        dobYear: user.dob_year,
+        showDobDate: Boolean(user.show_dob_date),
+        showDobYear: Boolean(user.show_dob_year),
+        receiveEmails: Boolean(user.receive_emails),
+        isBanned: Boolean(user.is_banned),
+        isMuted: Boolean(user.is_muted),
+        banReason: user.ban_reason,
+        permissions: {
+            canMute: user.role === 'Admin' || user.role === 'Moderator' || Boolean(user.can_mute),
+            canBan: user.role === 'Admin' || Boolean(user.can_ban),
+            canDeleteShouts: user.role === 'Admin' || user.role === 'Moderator' || Boolean(user.can_delete_shouts)
+        }
+    };
+};
+
+
 // 2. Login
 app.post('/api/auth/login', async (req, res) => {
     const { identifier, password } = req.body;
@@ -92,27 +124,7 @@ app.post('/api/auth/login', async (req, res) => {
         const match = await bcrypt.compare(password, user.password_hash);
         if (!match) return res.status(401).json({ message: 'Invalid credentials' });
 
-        const userObj = {
-            uid: user.uid,
-            username: user.username,
-            email: user.email,
-            role: user.role,
-            registrationDate: user.registration_date,
-            avatarUrl: user.avatar_url,
-            avatarColor: user.avatar_color,
-            location: user.location,
-            website: user.website,
-            about: user.about,
-            dobDay: user.dob_day,
-            dobMonth: user.dob_month,
-            dobYear: user.dob_year,
-            showDobDate: Boolean(user.show_dob_date),
-            showDobYear: Boolean(user.show_dob_year),
-            receiveEmails: Boolean(user.receive_emails),
-            isBanned: Boolean(user.is_banned),
-            isMuted: Boolean(user.is_muted)
-        };
-        res.json({ user: userObj, token: 'jwt-placeholder' });
+        res.json({ user: mapUserFromDb(user), token: 'jwt-placeholder' });
     } catch (err) {
         res.status(500).json({ message: `Login error: ${err.message}` });
     }
@@ -121,8 +133,8 @@ app.post('/api/auth/login', async (req, res) => {
 // 3. Get All Users
 app.get('/api/users', async (req, res) => {
     try {
-        const [users] = await query('SELECT uid, username, email, role, avatar_url as avatarUrl, avatar_color as avatarColor, registration_date as registrationDate FROM users');
-        res.json(users);
+        const [users] = await query('SELECT * FROM users');
+        res.json(users.map(mapUserFromDb));
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -134,17 +146,7 @@ app.get('/api/users/:id', async (req, res) => {
         const [users] = await query('SELECT * FROM users WHERE uid = ?', [req.params.id]);
         if (users.length === 0) return res.status(404).json({ message: 'User not found' });
         
-        const u = users[0];
-        const mapped = {
-            uid: u.uid, username: u.username, email: u.email, role: u.role,
-            registrationDate: u.registration_date, avatarUrl: u.avatar_url, avatarColor: u.avatar_color,
-            location: u.location, website: u.website, about: u.about,
-            dobDay: u.dob_day, dobMonth: u.dob_month, dobYear: u.dob_year,
-            showDobDate: Boolean(u.show_dob_date), showDobYear: Boolean(u.show_dob_year),
-            receiveEmails: Boolean(u.receive_emails), isBanned: Boolean(u.is_banned),
-            isMuted: Boolean(u.is_muted), banReason: u.ban_reason
-        };
-        res.json(mapped);
+        res.json(mapUserFromDb(users[0]));
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -237,6 +239,42 @@ app.post('/api/users/:uid/ip', async (req, res) => {
     } catch (err) { res.json({ success: false }); }
 });
 
+
+// --- MODERATION ---
+const verifyModeratorOrAdmin = async (req, res, next) => {
+    const requesterUid = req.headers['x-user-uid'];
+    if (!requesterUid) return res.status(401).json({ message: 'Unauthorized' });
+
+    try {
+        const [users] = await query('SELECT role, can_delete_shouts FROM users WHERE uid = ?', [requesterUid]);
+        if (users.length === 0) return res.status(403).json({ message: 'Forbidden: User not found' });
+        
+        const user = users[0];
+        const role = user.role?.toLowerCase() || '';
+        const hasDeletePermission = user.can_delete_shouts == 1;
+        const isAuthorized = role === 'admin' || role === 'moderator' || hasDeletePermission;
+
+        if (!isAuthorized) {
+            return res.status(403).json({ message: 'Forbidden: Insufficient permissions.' });
+        }
+        
+        next();
+    } catch (e) {
+        res.status(500).json({ message: e.message });
+    }
+};
+
+app.delete('/api/shouts/:shoutId', verifyModeratorOrAdmin, async (req, res) => {
+    const { shoutId } = req.params;
+    try {
+        await query('DELETE FROM shouts WHERE id = ?', [shoutId]);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+
 // --- ADMIN ROUTES ---
 const verifyAdmin = async (req, res, next) => {
     const requesterUid = req.headers['x-admin-uid'];
@@ -261,9 +299,21 @@ app.get('/api/admin/users', verifyAdmin, async (req, res) => {
 });
 
 app.put('/api/admin/users/:targetUid', verifyAdmin, async (req, res) => {
-    const { role, isBanned, isMuted, banReason } = req.body;
+    const { role, isBanned, isMuted, banReason, permissions } = req.body;
     try {
-        await query('UPDATE users SET role = ?, is_banned = ?, is_muted = ?, ban_reason = ? WHERE uid = ?', [role, isBanned ? 1 : 0, isMuted ? 1 : 0, banReason, req.params.targetUid]);
+        await query(
+            'UPDATE users SET role = ?, is_banned = ?, is_muted = ?, ban_reason = ?, can_mute = ?, can_ban = ?, can_delete_shouts = ? WHERE uid = ?', 
+            [
+                role, 
+                isBanned ? 1 : 0, 
+                isMuted ? 1 : 0, 
+                banReason,
+                permissions?.canMute ? 1 : 0,
+                permissions?.canBan ? 1 : 0,
+                permissions?.canDeleteShouts ? 1 : 0,
+                req.params.targetUid
+            ]
+        );
         res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });

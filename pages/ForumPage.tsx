@@ -103,13 +103,10 @@ const ForumPage: React.FC = () => {
       }
   };
 
-  // Check if user can delete shouts (admin or moderator)
   const canDeleteShouts = currentUser && (
     currentUser.role === Role.ADMIN || 
     currentUser.role === Role.MODERATOR ||
-    currentUser.role?.toLowerCase() === 'admin' ||
-    currentUser.role?.toLowerCase() === 'moderator' ||
-    currentUser.permissions?.canDeleteShouts === true
+    currentUser.permissions?.canDeleteShouts
   );
 
   return (

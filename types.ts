@@ -13,12 +13,6 @@ export interface IpLog {
   latest: string; // ISO Date
 }
 
-export interface UserPermissions {
-  canMute: boolean;
-  canBan: boolean;
-  canDeleteShouts: boolean;
-}
-
 export interface User {
   uid: number;
   username: string;
@@ -29,10 +23,6 @@ export interface User {
   avatarUrl: string;
   avatarColor?: string;
   
-  // Access Control
-  priority: number;
-  permissions?: UserPermissions;
-
   // Extended Profile Fields
   location?: string;
   website?: string;
@@ -51,6 +41,12 @@ export interface User {
   isBanned?: boolean;
   isMuted?: boolean;
   banReason?: string;
+  // FIX: Add optional permissions property to align with the backend API response and resolve type errors.
+  permissions?: {
+    canMute?: boolean;
+    canBan?: boolean;
+    canDeleteShouts?: boolean;
+  };
 }
 
 export interface InviteCode {
