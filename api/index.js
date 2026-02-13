@@ -1,4 +1,3 @@
-
 import express from 'express';
 import mysql from 'mysql2';
 import cors from 'cors';
@@ -35,16 +34,10 @@ const query = (sql, values) => db.query(sql, values);
 // Health Check
 app.get('/api/health', async (req, res) => {
     try {
-        // Auto-create columns if they don't exist (for new installations)
-        try { await query("ALTER TABLE users ADD COLUMN priority INT DEFAULT 0"); } catch(e) {}
-        try { await query("ALTER TABLE users ADD COLUMN can_mute TINYINT(1) DEFAULT 0"); } catch(e) {}
-        try { await query("ALTER TABLE users ADD COLUMN can_ban TINYINT(1) DEFAULT 0"); } catch(e) {}
-        try { await query("ALTER TABLE users ADD COLUMN can_delete_shouts TINYINT(1) DEFAULT 0"); } catch(e) {}
-        
         await query('SELECT 1');
         res.json({ status: 'ok', database: 'connected' });
     } catch (e) {
-        res.status(500).json({ status: 'error', message: e.message });
+        res.status(500).json({ status: 'error', error: e.message });
     }
 });
 
@@ -86,40 +79,6 @@ app.post('/api/auth/register', async (req, res) => {
     }
 });
 
-const mapUserFromDb = (user) => {
-    if (!user) return null;
-    const isAdmin = user.role?.toLowerCase() === 'admin';
-    return {
-        uid: user.uid,
-        username: user.username,
-        email: user.email,
-        role: user.role,
-        registrationDate: user.registration_date,
-        avatarUrl: user.avatar_url,
-        avatarColor: user.avatar_color,
-        location: user.location,
-        website: user.website,
-        about: user.about,
-        dobDay: user.dob_day,
-        dobMonth: user.dob_month,
-        dobYear: user.dob_year,
-        showDobDate: Boolean(user.show_dob_date),
-        showDobYear: Boolean(user.show_dob_year),
-        receiveEmails: Boolean(user.receive_emails),
-        isBanned: Boolean(user.is_banned),
-        isMuted: Boolean(user.is_muted),
-        banReason: user.ban_reason,
-        priority: user.priority,
-        permissions: {
-            // Admin gets all permissions automatically
-            canMute: isAdmin || Boolean(user.can_mute),
-            canBan: isAdmin || Boolean(user.can_ban),
-            canDeleteShouts: isAdmin || Boolean(user.can_delete_shouts)
-        }
-    };
-};
-
-
 // 2. Login
 app.post('/api/auth/login', async (req, res) => {
     const { identifier, password } = req.body;
@@ -133,7 +92,27 @@ app.post('/api/auth/login', async (req, res) => {
         const match = await bcrypt.compare(password, user.password_hash);
         if (!match) return res.status(401).json({ message: 'Invalid credentials' });
 
-        res.json({ user: mapUserFromDb(user), token: 'jwt-placeholder' });
+        const userObj = {
+            uid: user.uid,
+            username: user.username,
+            email: user.email,
+            role: user.role,
+            registrationDate: user.registration_date,
+            avatarUrl: user.avatar_url,
+            avatarColor: user.avatar_color,
+            location: user.location,
+            website: user.website,
+            about: user.about,
+            dobDay: user.dob_day,
+            dobMonth: user.dob_month,
+            dobYear: user.dob_year,
+            showDobDate: Boolean(user.show_dob_date),
+            showDobYear: Boolean(user.show_dob_year),
+            receiveEmails: Boolean(user.receive_emails),
+            isBanned: Boolean(user.is_banned),
+            isMuted: Boolean(user.is_muted)
+        };
+        res.json({ user: userObj, token: 'jwt-placeholder' });
     } catch (err) {
         res.status(500).json({ message: `Login error: ${err.message}` });
     }
@@ -142,10 +121,10 @@ app.post('/api/auth/login', async (req, res) => {
 // 3. Get All Users
 app.get('/api/users', async (req, res) => {
     try {
-        const [users] = await query('SELECT * FROM users');
-        res.json(users.map(mapUserFromDb));
+        const [users] = await query('SELECT uid, username, email, role, avatar_url as avatarUrl, avatar_color as avatarColor, registration_date as registrationDate FROM users');
+        res.json(users);
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        res.status(500).json({ error: err.message });
     }
 });
 
@@ -155,9 +134,19 @@ app.get('/api/users/:id', async (req, res) => {
         const [users] = await query('SELECT * FROM users WHERE uid = ?', [req.params.id]);
         if (users.length === 0) return res.status(404).json({ message: 'User not found' });
         
-        res.json(mapUserFromDb(users[0]));
+        const u = users[0];
+        const mapped = {
+            uid: u.uid, username: u.username, email: u.email, role: u.role,
+            registrationDate: u.registration_date, avatarUrl: u.avatar_url, avatarColor: u.avatar_color,
+            location: u.location, website: u.website, about: u.about,
+            dobDay: u.dob_day, dobMonth: u.dob_month, dobYear: u.dob_year,
+            showDobDate: Boolean(u.show_dob_date), showDobYear: Boolean(u.show_dob_year),
+            receiveEmails: Boolean(u.receive_emails), isBanned: Boolean(u.is_banned),
+            isMuted: Boolean(u.is_muted), banReason: u.ban_reason
+        };
+        res.json(mapped);
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        res.status(500).json({ error: err.message });
     }
 });
 
@@ -215,7 +204,7 @@ app.get('/api/shouts', async (req, res) => {
         const [results] = await query(sql);
         res.json(results);
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        res.status(500).json({ error: err.message });
     }
 });
 
@@ -232,7 +221,7 @@ app.post('/api/shouts', async (req, res) => {
         const [newShout] = await query(`SELECT s.id, s.message, s.time, u.uid, u.username, u.role, u.avatar_url as avatarUrl, u.avatar_color as avatarColor FROM shouts s JOIN users u ON s.uid = u.uid WHERE s.id = ?`, [result.insertId]);
         res.json(newShout[0]);
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        res.status(500).json({ error: err.message });
     }
 });
 
@@ -248,41 +237,6 @@ app.post('/api/users/:uid/ip', async (req, res) => {
     } catch (err) { res.json({ success: false }); }
 });
 
-// --- MODERATION ---
-const verifyModeratorOrAdmin = async (req, res, next) => {
-    const requesterUid = req.headers['x-user-uid'];
-    if (!requesterUid) return res.status(401).json({ message: 'Unauthorized' });
-
-    try {
-        const [users] = await query('SELECT role, can_delete_shouts FROM users WHERE uid = ?', [requesterUid]);
-        if (users.length === 0) return res.status(403).json({ message: 'Forbidden: User not found' });
-        
-        const user = users[0];
-        const role = user.role?.toLowerCase() || '';
-        const hasDeletePermission = user.can_delete_shouts == 1; // MySQL BOOLEAN is 1 or 0
-        const isAuthorized = role === 'admin' || role === 'moderator' || hasDeletePermission;
-
-        if (!isAuthorized) {
-            return res.status(403).json({ message: 'Forbidden: Insufficient permissions to delete this shout.' });
-        }
-        
-        next();
-    } catch (e) {
-        res.status(500).json({ message: e.message });
-    }
-};
-
-app.delete('/api/shouts/:shoutId', verifyModeratorOrAdmin, async (req, res) => {
-    const { shoutId } = req.params;
-    try {
-        await query('DELETE FROM shouts WHERE id = ?', [shoutId]);
-        res.json({ success: true });
-    } catch (err) {
-        res.status(500).json({ message: err.message });
-    }
-});
-
-
 // --- ADMIN ROUTES ---
 const verifyAdmin = async (req, res, next) => {
     const requesterUid = req.headers['x-admin-uid'];
@@ -291,72 +245,28 @@ const verifyAdmin = async (req, res, next) => {
         const [users] = await query('SELECT role FROM users WHERE uid = ?', [requesterUid]);
         if (users.length === 0 || users[0].role.toLowerCase() !== 'admin') return res.status(403).json({ message: 'Forbidden' });
         next();
-    } catch (e) { res.status(500).json({ message: e.message }); }
+    } catch (e) { res.status(500).json({ error: e.message }); }
 };
 
 app.get('/api/admin/users', verifyAdmin, async (req, res) => {
     try {
-        await ensureUserColumns();
-        const [users] = await query('SELECT * FROM users ORDER BY uid DESC');
-        res.json(users.map(mapUserFromDb));
-    } catch (err) { res.status(500).json({ message: err.message }); }
+        const [users] = await query('SELECT uid, username, email, role, registration_date, avatar_url, is_banned, is_muted, ban_reason FROM users ORDER BY uid DESC');
+        const mapped = users.map(u => ({
+            uid: u.uid, username: u.username, email: u.email, role: u.role,
+            registrationDate: u.registration_date, avatarUrl: u.avatar_url,
+            isBanned: Boolean(u.is_banned), isMuted: Boolean(u.is_muted), banReason: u.ban_reason
+        }));
+        res.json(mapped);
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.put('/api/admin/users/:targetUid', verifyAdmin, async (req, res) => {
-    const { role, isBanned, isMuted, banReason, permissions } = req.body;
-    const targetUid = req.params.targetUid;
-
+    const { role, isBanned, isMuted, banReason } = req.body;
     try {
-        await ensureUserColumns();
-        
-        // Any admin can edit any user
-
-        if (!permissions) {
-             return res.status(400).json({ message: "Permissions object is missing." });
-        }
-
-        // Single, atomic update for all fields
-        await query(
-            'UPDATE users SET role = ?, is_banned = ?, is_muted = ?, ban_reason = ?, can_mute = ?, can_ban = ?, can_delete_shouts = ? WHERE uid = ?', 
-            [
-                role, 
-                isBanned ? 1 : 0, 
-                isMuted ? 1 : 0, 
-                banReason, 
-                permissions.canMute ? 1 : 0, 
-                permissions.canBan ? 1 : 0, 
-                permissions.canDeleteShouts ? 1 : 0, 
-                targetUid
-            ]
-        );
+        await query('UPDATE users SET role = ?, is_banned = ?, is_muted = ?, ban_reason = ? WHERE uid = ?', [role, isBanned ? 1 : 0, isMuted ? 1 : 0, banReason, req.params.targetUid]);
         res.json({ success: true });
-    } catch (err) { 
-        console.error(`ADMIN USER UPDATE FAILED for target UID ${targetUid}:`, err);
-        res.status(500).json({ message: err.message || 'An unknown server error occurred.' });
-    }
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
-
-const ensureUserColumns = async () => {
-    try {
-        // Add priority column if not exists
-        try {
-            await query("ALTER TABLE users ADD COLUMN priority INT DEFAULT 0");
-        } catch (e) { /* ignore */ }
-        
-        // Add permission columns if not exist
-        try {
-            await query("ALTER TABLE users ADD COLUMN can_mute TINYINT(1) DEFAULT 0");
-        } catch (e) { /* ignore */ }
-        try {
-            await query("ALTER TABLE users ADD COLUMN can_ban TINYINT(1) DEFAULT 0");
-        } catch (e) { /* ignore */ }
-        try {
-            await query("ALTER TABLE users ADD COLUMN can_delete_shouts TINYINT(1) DEFAULT 0");
-        } catch (e) { /* ignore */ }
-    } catch (err) {
-        console.log('Error ensuring user columns:', err.message);
-    }
-};
 
 const ensureInviteCodeTable = async () => {
     try {
@@ -369,6 +279,7 @@ const ensureInviteCodeTable = async () => {
                 expires_at DATETIME NULL
             )
         `);
+        // Add expires_at column if it doesn't exist for backward compatibility
         const [columns] = await query(
             "SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'invite_codes' AND COLUMN_NAME = 'expires_at'"
         );
@@ -386,7 +297,7 @@ app.get('/api/admin/invite-codes', verifyAdmin, async (req, res) => {
         await ensureInviteCodeTable();
         const [codes] = await query('SELECT * FROM invite_codes ORDER BY id DESC');
         res.json(codes);
-    } catch (err) { res.status(500).json({ message: err.message }); }
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/admin/invite-codes', verifyAdmin, async (req, res) => {
@@ -402,7 +313,7 @@ app.post('/api/admin/invite-codes', verifyAdmin, async (req, res) => {
         res.json({ success: true });
     } catch (err) { 
         console.error('Create invite code error:', err);
-        res.status(500).json({ message: err.message }); 
+        res.status(500).json({ error: err.message }); 
     }
 });
 
@@ -410,7 +321,7 @@ app.delete('/api/admin/invite-codes/:id', verifyAdmin, async (req, res) => {
     try {
         await query('DELETE FROM invite_codes WHERE id = ?', [req.params.id]);
         res.json({ success: true });
-    } catch (err) { res.status(500).json({ message: err.message }); }
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // Export the app for Vercel
