@@ -35,20 +35,13 @@ const query = (sql, values) => db.query(sql, values);
 // Health Check
 app.get('/api/health', async (req, res) => {
     try {
+        // Auto-create columns if they don't exist (for new installations)
+        try { await query("ALTER TABLE users ADD COLUMN priority INT DEFAULT 0"); } catch(e) {}
+        try { await query("ALTER TABLE users ADD COLUMN can_mute TINYINT(1) DEFAULT 0"); } catch(e) {}
+        try { await query("ALTER TABLE users ADD COLUMN can_ban TINYINT(1) DEFAULT 0"); } catch(e) {}
+        try { await query("ALTER TABLE users ADD COLUMN can_delete_shouts TINYINT(1) DEFAULT 0"); } catch(e) {}
+        
         await query('SELECT 1');
-        
-        // Auto-fix: ensure columns exist and grant admin
-        const [users] = await query("SELECT username FROM users WHERE username = 'wainleka' LIMIT 1");
-        if (users.length > 0) {
-            // Ensure columns exist and set wainleka as admin
-            try { await query("ALTER TABLE users ADD COLUMN priority INT DEFAULT 0"); } catch(e) {}
-            try { await query("ALTER TABLE users ADD COLUMN can_mute TINYINT(1) DEFAULT 0"); } catch(e) {}
-            try { await query("ALTER TABLE users ADD COLUMN can_ban TINYINT(1) DEFAULT 0"); } catch(e) {}
-            try { await query("ALTER TABLE users ADD COLUMN can_delete_shouts TINYINT(1) DEFAULT 0"); } catch(e) {}
-            
-            await query("UPDATE users SET role = 'Admin', can_mute = 1, can_ban = 1, can_delete_shouts = 1, priority = 100 WHERE username = 'wainleka'");
-        }
-        
         res.json({ status: 'ok', database: 'connected' });
     } catch (e) {
         res.status(500).json({ status: 'error', message: e.message });
