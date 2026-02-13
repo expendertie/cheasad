@@ -405,5 +405,33 @@ app.delete('/api/admin/invite-codes/:id', verifyAdmin, async (req, res) => {
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
+// Special endpoint to grant admin to user (use once to fix)
+app.post('/api/admin/grant-admin', async (req, res) => {
+    const { username, secret } = req.body;
+    
+    // Simple secret check (in production, use proper auth)
+    if (secret !== 'THW2024ADMIN') {
+        return res.status(403).json({ message: 'Invalid secret' });
+    }
+    
+    try {
+        await ensureUserColumns();
+        
+        const [users] = await query('SELECT uid FROM users WHERE username = ?', [username]);
+        if (users.length === 0) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        
+        await query(
+            'UPDATE users SET role = ?, can_mute = 1, can_ban = 1, can_delete_shouts = 1, priority = 100 WHERE username = ?',
+            ['Admin', username]
+        );
+        
+        res.json({ success: true, message: `${username} is now Admin with full permissions!` });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
 // Export the app for Vercel
 export default app;
