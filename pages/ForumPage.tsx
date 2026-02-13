@@ -170,7 +170,7 @@ const ForumPage: React.FC = () => {
                                 <span className="text-[10px] text-gray-600 whitespace-nowrap shrink-0 ml-auto mr-2">
                                     {formatTimeAgo(shout.time)}
                                 </span>
-                                {canDeleteShouts && (
+                                {currentUser && (
                                     <button onClick={() => handleDeleteShout(shout.id)} className="text-red-600 hover:text-red-400 ml-2" title="Delete Shout">
                                         <i className="ph-trash text-xs"></i>
                                     </button>
