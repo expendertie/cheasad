@@ -68,13 +68,19 @@ export const authService = {
         sessionStorage.removeItem(SESSION_KEY);
     },
 
-    getCurrentUser: (): User | null => {
+    getCurrentUser: async (): Promise<User | null> => {
         const sessionStr = localStorage.getItem(SESSION_KEY) || sessionStorage.getItem(SESSION_KEY);
         if (!sessionStr) return null;
         
         try {
             const { uid } = JSON.parse(sessionStr);
-            return null; 
+            if (!uid) return null;
+            
+            // Fetch user data from API
+            const res = await fetch(`${USER_API_URL}/${uid}`);
+            if (!res.ok) return null;
+            
+            return await res.json();
         } catch(e) {
             return null;
         }
