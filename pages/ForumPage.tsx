@@ -163,7 +163,7 @@ const ForumPage: React.FC = () => {
                                                 {canDeleteShouts && (
                                                     <button 
                                                         onClick={() => handleDeleteShout(shout.id)} 
-                                                        className="text-gray-600 hover:text-red-500 ml-2 opacity-30 group-hover:opacity-100 transition-opacity" 
+                                                        className="text-red-500 opacity-50 hover:opacity-100 ml-2 transition-opacity" 
                                                         title="Delete Shout"
                                                     >
                                                         <i className="ph-trash text-sm"></i>
