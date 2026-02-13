@@ -265,11 +265,13 @@ const verifyModeratorOrAdmin = async (req, res, next) => {
         if (users.length === 0) return res.status(403).json({ message: 'Forbidden: User not found' });
         
         const user = users[0];
-        // Allow admin or moderator OR users with can_delete_shouts permission
         const role = user.role?.toLowerCase() || '';
-        const canDelete = role === 'admin' || role === 'moderator' || user.can_delete_shouts == 1;
+        const hasDeletePermission = user.can_delete_shouts == 1; // MySQL BOOLEAN is 1 or 0
+        const isAuthorized = role === 'admin' || role === 'moderator' || hasDeletePermission;
 
-        if (!canDelete) return res.status(403).json({ message: 'Forbidden: Only moderators and admins can delete shouts' });
+        if (!isAuthorized) {
+            return res.status(403).json({ message: 'Forbidden: Insufficient permissions to delete this shout.' });
+        }
         
         next();
     } catch (e) {

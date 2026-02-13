@@ -172,11 +172,15 @@ const ForumPage: React.FC = () => {
                                         {shout.message}
                                     </span>
                                 </div>
-                                <span className="text-[10px] text-gray-600 whitespace-nowrap shrink-0 ml-auto mr-2">
+                                <span className="text-[10px] text-gray-600 whitespace-nowrap shrink-0 ml-auto">
                                     {formatTimeAgo(shout.time)}
                                 </span>
                                 {canDeleteShouts && (
-                                    <button onClick={() => handleDeleteShout(shout.id)} className="text-red-600 hover:text-red-400 ml-2" title="Delete Shout">
+                                    <button 
+                                        onClick={() => handleDeleteShout(shout.id)} 
+                                        className="text-gray-600 hover:text-red-500 ml-2 opacity-0 group-hover:opacity-100 transition-opacity" 
+                                        title="Delete Shout"
+                                    >
                                         <i className="ph-trash text-xs"></i>
                                     </button>
                                 )}
