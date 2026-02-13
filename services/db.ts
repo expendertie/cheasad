@@ -1,5 +1,5 @@
 
-import type { User, InviteCode, Shout } from '../types';
+import type { User, InviteCode, Shout, Forum, Thread, Post } from '../types';
 import { Role } from '../types';
 
 // Use relative path for Vercel deployment
@@ -72,6 +72,47 @@ export const dbService = {
         }
     }
 };
+
+export const forumService = {
+    getForums: async (): Promise<{ category: string, forums: Forum[] }[]> => {
+        const res = await fetch(`${API_URL}/forums`);
+        if (!res.ok) throw new Error("Failed to fetch forums");
+        return res.json();
+    },
+    
+    getThreadsByForumId: async (forumId: number): Promise<{ forum: Forum, threads: Thread[] }> => {
+        const res = await fetch(`${API_URL}/forums/${forumId}/threads`);
+        if (!res.ok) throw new Error("Failed to fetch threads");
+        return res.json();
+    },
+
+    getThreadById: async (threadId: number): Promise<{ thread: Thread, posts: Post[] }> => {
+        const res = await fetch(`${API_URL}/threads/${threadId}`);
+        if (!res.ok) throw new Error("Failed to fetch thread");
+        return res.json();
+    },
+
+    createThread: async (uid: number, forumId: number, title: string, content: string): Promise<Thread> => {
+        const res = await fetch(`${API_URL}/threads`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ uid, forumId, title, content })
+        });
+        if (!res.ok) throw new Error("Failed to create thread");
+        return res.json();
+    },
+
+    createPost: async (uid: number, threadId: number, content: string): Promise<Post> => {
+        const res = await fetch(`${API_URL}/posts`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ uid, threadId, content })
+        });
+        if (!res.ok) throw new Error("Failed to create post");
+        return res.json();
+    }
+};
+
 
 export const _mockAddUser = (user: User) => {};
 export const _mockGetUsers = () => [];

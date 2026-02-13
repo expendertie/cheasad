@@ -15,6 +15,8 @@ import BannedPage from './pages/BannedPage';
 import Layout from './components/Layout';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import MembersPage from './pages/MembersPage';
+import ThreadListPage from './pages/ThreadListPage';
+import ThreadPage from './pages/ThreadPage';
 
 function App() {
   return (
@@ -51,6 +53,16 @@ function App() {
             <Route path="/account/security" element={
               <ProtectedRoute>
                 <PasswordSecurityPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/forums/:forumId" element={
+              <ProtectedRoute>
+                <ThreadListPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/threads/:threadId" element={
+              <ProtectedRoute>
+                <ThreadPage />
               </ProtectedRoute>
             } />
             

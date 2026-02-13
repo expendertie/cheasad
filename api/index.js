@@ -374,5 +374,155 @@ app.delete('/api/admin/invite-codes/:id', verifyAdmin, async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+
+// --- FORUM ROUTES ---
+
+// Get all forums, grouped by category
+app.get('/api/forums', async (req, res) => {
+    try {
+        const sql = `
+            SELECT 
+                f.*,
+                t.id as last_post_thread_id,
+                t.title as last_post_thread_title,
+                p.created_at as last_post_time,
+                u.uid as last_post_user_uid,
+                u.username as last_post_username,
+                u.role as last_post_user_role
+            FROM forums f
+            LEFT JOIN posts p ON f.last_post_id = p.id
+            LEFT JOIN threads t ON p.thread_id = t.id
+            LEFT JOIN users u ON p.uid = u.uid
+            ORDER BY f.category, f.display_order;
+        `;
+        const [forums] = await query(sql);
+        const grouped = forums.reduce((acc, forum) => {
+            const category = forum.category || 'General';
+            if (!acc[category]) {
+                acc[category] = [];
+            }
+            acc[category].push(forum);
+            return acc;
+        }, {});
+
+        const result = Object.keys(grouped).map(key => ({
+            category: key,
+            forums: grouped[key]
+        }));
+        
+        res.json(result);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Get threads for a specific forum
+app.get('/api/forums/:forumId/threads', async (req, res) => {
+    const { forumId } = req.params;
+    try {
+        const [forums] = await query('SELECT * FROM forums WHERE id = ?', [forumId]);
+        if (forums.length === 0) return res.status(404).json({ message: 'Forum not found' });
+
+        const sql = `
+            SELECT 
+                t.*,
+                author.username as author_username,
+                author.role as author_role,
+                author.avatar_url as author_avatar_url,
+                author.avatar_color as author_avatar_color,
+                last_poster.uid as last_post_uid,
+                last_poster.username as last_post_username,
+                last_poster.role as last_post_role
+            FROM threads t
+            JOIN users author ON t.author_uid = author.uid
+            JOIN users last_poster ON t.last_post_uid = last_poster.uid
+            WHERE t.forum_id = ?
+            ORDER BY t.is_pinned DESC, t.last_post_time DESC
+        `;
+        const [threads] = await query(sql, [forumId]);
+        res.json({ forum: forums[0], threads });
+    } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Get a single thread with its posts
+app.get('/api/threads/:threadId', async (req, res) => {
+    const { threadId } = req.params;
+    try {
+        const [threads] = await query('SELECT * FROM threads WHERE id = ?', [threadId]);
+        if (threads.length === 0) return res.status(404).json({ message: 'Thread not found' });
+
+        const postsSql = `
+            SELECT p.*, u.username, u.role, u.avatar_url as avatarUrl, u.avatar_color as avatarColor, u.registration_date as registrationDate,
+            (SELECT COUNT(*) FROM posts WHERE uid = u.uid) as post_count
+            FROM posts p
+            JOIN users u ON p.uid = u.uid
+            WHERE p.thread_id = ?
+            ORDER BY p.created_at ASC
+        `;
+        const [posts] = await query(postsSql, [threadId]);
+        res.json({ thread: threads[0], posts });
+    } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Create a new thread
+app.post('/api/threads', async (req, res) => {
+    const { uid, forumId, title, content } = req.body;
+    const connection = await db.getConnection();
+    try {
+        await connection.beginTransaction();
+        const now = new Date();
+        const threadSql = 'INSERT INTO threads (forum_id, title, author_uid, last_post_time, last_post_uid) VALUES (?, ?, ?, ?, ?)';
+        const [threadResult] = await connection.query(threadSql, [forumId, title, uid, now, uid]);
+        const threadId = threadResult.insertId;
+
+        const postSql = 'INSERT INTO posts (thread_id, uid, content, created_at) VALUES (?, ?, ?, ?)';
+        const [postResult] = await connection.query(postSql, [threadId, uid, content, now]);
+        const postId = postResult.insertId;
+
+        await connection.query('UPDATE forums SET thread_count = thread_count + 1, post_count = post_count + 1, last_post_id = ? WHERE id = ?', [postId, forumId]);
+        await connection.query('UPDATE users SET post_count = post_count + 1 WHERE uid = ?', [uid]);
+
+        await connection.commit();
+        const [newThread] = await query('SELECT * FROM threads WHERE id = ?', [threadId]);
+        res.status(201).json(newThread[0]);
+    } catch (e) {
+        await connection.rollback();
+        res.status(500).json({ error: e.message });
+    } finally {
+        connection.release();
+    }
+});
+
+// Create a new post (reply)
+app.post('/api/posts', async (req, res) => {
+    const { uid, threadId, content } = req.body;
+    const connection = await db.getConnection();
+    try {
+        await connection.beginTransaction();
+        const now = new Date();
+
+        const postSql = 'INSERT INTO posts (thread_id, uid, content, created_at) VALUES (?, ?, ?, ?)';
+        const [postResult] = await connection.query(postSql, [threadId, uid, content, now]);
+        const postId = postResult.insertId;
+
+        await connection.query('UPDATE threads SET reply_count = reply_count + 1, last_post_time = ?, last_post_uid = ? WHERE id = ?', [now, uid, threadId]);
+        const [threadInfo] = await connection.query('SELECT forum_id FROM threads WHERE id = ?', [threadId]);
+        await connection.query('UPDATE forums SET post_count = post_count + 1, last_post_id = ? WHERE id = ?', [postId, threadInfo[0].forum_id]);
+        await connection.query('UPDATE users SET post_count = post_count + 1 WHERE uid = ?', [uid]);
+
+        await connection.commit();
+        
+        const [newPost] = await query(`
+             SELECT p.*, u.username, u.role, u.avatar_url as avatarUrl, u.avatar_color as avatarColor, u.registration_date as registrationDate
+             FROM posts p JOIN users u ON p.uid = u.uid WHERE p.id = ?
+        `, [postId]);
+        res.status(201).json(newPost[0]);
+    } catch (e) {
+        await connection.rollback();
+        res.status(500).json({ error: e.message });
+    } finally {
+        connection.release();
+    }
+});
+
+
 // Export the app for Vercel
 export default app;

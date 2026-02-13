@@ -3,12 +3,12 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { useAuth } from '../hooks/useAuth';
-import { forumCategories, latestPosts } from '../services/mockData';
 import { authService } from '../services/authService';
-import { dbService } from '../services/db.ts';
-import { Role, User, Shout } from '../types';
+import { dbService, forumService } from '../services/db';
+import { Role, User, Shout, Forum } from '../types';
 
-const getRoleColor = (role: Role) => {
+const getRoleColor = (role: Role | null) => {
+    if (!role) return 'text-gray-400';
     switch (role) {
         case Role.ADMIN: return 'text-red-500 text-glow';
         case Role.MODERATOR: return 'text-cyan-400';
@@ -18,16 +18,22 @@ const getRoleColor = (role: Role) => {
 };
 
 const formatTimeAgo = (dateString: string) => {
+    if (!dateString) return 'Never';
     const date = new Date(dateString);
     const now = new Date();
     const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
 
-    if (seconds < 60) return 'now';
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h`;
-    return date.toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' });
+    let interval = seconds / 31536000;
+    if (interval > 1) return `${Math.floor(interval)}y`;
+    interval = seconds / 2592000;
+    if (interval > 1) return `${Math.floor(interval)}mo`;
+    interval = seconds / 86400;
+    if (interval > 1) return `${Math.floor(interval)}d`;
+     interval = seconds / 3600;
+    if (interval > 1) return `${Math.floor(interval)}h`;
+    interval = seconds / 60;
+    if (interval > 1) return `${Math.floor(interval)}m`;
+    return `${Math.floor(seconds)}s`;
 };
 
 const ForumPage: React.FC = () => {
@@ -38,6 +44,7 @@ const ForumPage: React.FC = () => {
   const [shoutInput, setShoutInput] = useState("");
   const [cooldown, setCooldown] = useState(0);
   const shoutboxRef = useRef<HTMLDivElement>(null);
+  const [forumCategories, setForumCategories] = useState<{ category: string, forums: Forum[] }[]>([]);
 
   useEffect(() => {
       const fetchData = async () => {
@@ -52,6 +59,10 @@ const ForumPage: React.FC = () => {
           // 3. Fetch Shouts (Async)
           const fetchedShouts = await dbService.getShouts();
           setShouts(fetchedShouts);
+
+          // 4. Fetch Forum Data
+          const fetchedForums = await forumService.getForums();
+          setForumCategories(fetchedForums);
       };
       
       fetchData();
@@ -214,59 +225,38 @@ const ForumPage: React.FC = () => {
                     {forumCategories.map((category, idx) => (
                         <div key={idx} className="glass-panel rounded-sm overflow-hidden border-t-2 border-t-[var(--accent-pink)]">
                             <div className="bg-[#1a1a1d]/90 px-4 py-3 border-b border-gray-800">
-                                <h3 className="font-bold text-sm text-white tracking-wider uppercase">{category.title}</h3>
+                                <h3 className="font-bold text-sm text-white tracking-wider uppercase">{category.category}</h3>
                             </div>
                             
                             <div className="divide-y divide-gray-800 bg-[#111]/40">
-                                {category.items.map((forum) => (
+                                {category.forums.map((forum) => (
                                     <div key={forum.id} className="p-4 flex items-center gap-4 hover:bg-[#1a1a1d]/50 transition-colors group">
                                         <div className="w-10 h-10 bg-[#141416] rounded-full flex items-center justify-center border border-gray-700 group-hover:border-[var(--accent-pink)] group-hover:shadow-[0_0_10px_var(--accent-pink)] transition-all duration-300 relative overflow-hidden">
-                                            {forum.icon === 'custom-neon-megaphone' ? (
-                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="group-hover:drop-shadow-[0_0_5px_rgba(240,44,132,0.8)] transition-all duration-300 z-10">
-                                                    <defs>
-                                                        <linearGradient id="neonGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                                                            <stop offset="0%" stopColor="#f02c84" />
-                                                            <stop offset="100%" stopColor="#00ffff" />
-                                                        </linearGradient>
-                                                    </defs>
-                                                    <path d="M11 7.5L17 4.5V20L11 16.5H7C5.89543 16.5 5 15.6046 5 14.5V9.5C5 8.39543 5.89543 7.5 7 7.5H11Z" stroke="url(#neonGradient)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                                                    <path d="M17 11.5C18.5 11.5 20 11.8 20 12.5C20 13.2 18.5 13.5 17 13.5" stroke="url(#neonGradient)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                                                    <path d="M7 16.5L5.5 19.5C5.1 20.4 4 20.5 3.5 20" stroke="url(#neonGradient)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                                                    <path d="M11 7.5V16.5" stroke="url(#neonGradient)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                                                </svg>
-                                            ) : (
-                                                <i className={`${forum.icon} text-xl text-gray-500 group-hover:text-white transition-colors`}></i>
-                                            )}
+                                             <i className={`${forum.icon} text-xl text-gray-500 group-hover:text-white transition-colors`}></i>
                                         </div>
                                         
                                         <div className="flex-1">
-                                            <h4 className="font-bold text-white text-sm group-hover:text-[var(--accent-pink)] transition-colors cursor-pointer">{forum.title}</h4>
-                                            {forum.subforums && (
-                                                <div className="flex gap-2 mt-1">
-                                                    {forum.subforums.map(sf => (
-                                                        <span key={sf} className="text-[10px] bg-[#1a1a1d] border border-gray-700 px-1 rounded text-gray-400 hover:text-white cursor-pointer hover:border-gray-500">{sf}</span>
-                                                    ))}
-                                                </div>
-                                            )}
+                                            <Link to={`/forums/${forum.id}`} className="font-bold text-white text-sm group-hover:text-[var(--accent-pink)] transition-colors cursor-pointer">{forum.title}</Link>
+                                             <p className="text-xs text-gray-500 mt-1">{forum.description}</p>
                                         </div>
 
                                         <div className="hidden md:flex flex-col items-end text-xs text-gray-500 w-32">
-                                            <span className="text-gray-300">{forum.threads.toLocaleString()}</span> threads
-                                            <span className="text-gray-300">{forum.messages.toLocaleString()}</span> msgs
+                                            <span className="text-gray-300">{forum.thread_count.toLocaleString()}</span> threads
+                                            <span className="text-gray-300">{forum.post_count.toLocaleString()}</span> msgs
                                         </div>
 
                                         <div className="hidden sm:block w-48 border-l border-gray-800 pl-4">
-                                            {forum.lastPost ? (
+                                            {forum.last_post_thread_id ? (
                                                 <div className="flex items-center gap-2">
-                                                    <div className="w-8 h-8 rounded bg-gray-800 overflow-hidden">
-                                                        <img src={`https://ui-avatars.com/api/?name=${forum.lastPost.user}&background=random`} alt="av" />
-                                                    </div>
+                                                     <Link to={`/members/${forum.last_post_username}.${forum.last_post_user_uid}`} className="w-8 h-8 rounded bg-gray-800 overflow-hidden flex-shrink-0">
+                                                         <img src={`https://ui-avatars.com/api/?name=${forum.last_post_username}&background=random`} alt="av" />
+                                                     </Link>
                                                     <div className="overflow-hidden">
-                                                        <div className="truncate text-xs font-semibold text-[var(--accent-pink)] hover:underline cursor-pointer">{forum.lastPost.title}</div>
+                                                         <Link to={`/threads/${forum.last_post_thread_id}`} className="truncate text-xs font-semibold text-[var(--accent-pink)] hover:underline cursor-pointer">{forum.last_post_thread_title}</Link>
                                                         <div className="text-[10px] text-gray-500">
-                                                            by <span className="text-gray-300">{forum.lastPost.user}</span>
+                                                            by <Link to={`/members/${forum.last_post_username}.${forum.last_post_user_uid}`} className={`${getRoleColor(forum.last_post_user_role)} hover:underline`}>{forum.last_post_username}</Link>
                                                         </div>
-                                                        <div className="text-[10px] text-gray-600">{forum.lastPost.time}</div>
+                                                        <div className="text-[10px] text-gray-600">{formatTimeAgo(forum.last_post_time!)} ago</div>
                                                     </div>
                                                 </div>
                                             ) : (
@@ -339,34 +329,6 @@ const ForumPage: React.FC = () => {
                         <div className="mt-4 pt-3 border-t border-gray-800 text-[10px] text-gray-500">
                             Total: {allMembers.length} (members: {allMembers.length}, guests: 0)
                         </div>
-                    </div>
-                </div>
-
-                {/* LATEST POSTS */}
-                <div className="glass-panel rounded-sm">
-                     <div className="bg-[#1a1a1d]/80 px-4 py-2 border-b border-gray-800">
-                        <span className="font-bold text-xs tracking-wide text-gray-300">LATEST POSTS</span>
-                    </div>
-                    <div className="divide-y divide-gray-800 bg-[#111]/50">
-                        {latestPosts && latestPosts.length > 0 ? (
-                            latestPosts.map((post: any, i: number) => (
-                                <div key={i} className="p-3 flex gap-3 hover:bg-[#1a1a1d] transition-colors">
-                                    <img src={post.avatar} className="w-8 h-8 rounded bg-gray-800" alt="av" />
-                                    <div className="overflow-hidden">
-                                        <div className="truncate text-xs font-semibold text-[var(--accent-pink)] hover:underline cursor-pointer">{post.title}</div>
-                                        <div className="text-[10px] text-gray-500">
-                                            Latest: <span className="text-gray-300">{post.user}</span>
-                                        </div>
-                                        <div className="text-[10px] text-gray-600">{post.time}</div>
-                                        <div className="text-[10px] text-gray-500 mt-0.5">{post.location}</div>
-                                    </div>
-                                </div>
-                            ))
-                        ) : (
-                            <div className="p-4 text-xs text-gray-600 italic text-center">
-                                No recent posts.
-                            </div>
-                        )}
                     </div>
                 </div>
 

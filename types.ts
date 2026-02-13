@@ -65,3 +65,58 @@ export interface Shout {
   avatarUrl: string;
   avatarColor?: string;
 }
+
+export interface Forum {
+    id: number;
+    title: string;
+    description: string;
+    icon: string;
+    thread_count: number;
+    post_count: number;
+    last_post_time: string | null;
+    last_post_thread_id: number | null;
+    last_post_thread_title: string | null;
+    last_post_username: string | null;
+    last_post_user_role: Role | null;
+    last_post_user_uid: number | null;
+}
+
+export interface Thread {
+  id: number;
+  forum_id: number;
+  title: string;
+  is_pinned: boolean;
+  is_locked: boolean;
+  view_count: number;
+  reply_count: number;
+  
+  // Author info
+  author_uid: number;
+  author_username: string;
+  author_role: Role;
+  author_avatar_url: string;
+  author_avatar_color?: string;
+  created_at: string;
+
+  // Last post info
+  last_post_time: string;
+  last_post_uid: number;
+  last_post_username: string;
+  last_post_role: Role;
+}
+
+export interface Post {
+    id: number;
+    thread_id: number;
+    uid: number;
+    content: string;
+    created_at: string;
+
+    // Joined user data
+    username: string;
+    role: Role;
+    avatarUrl: string;
+    avatarColor?: string;
+    registrationDate: string;
+    post_count?: number;
+}
