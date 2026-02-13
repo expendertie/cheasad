@@ -103,14 +103,6 @@ const ForumPage: React.FC = () => {
       }
   };
 
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-          e.preventDefault();
-          handlePostShout();
-      }
-  }
-
   // Check if user can delete shouts (admin or moderator)
   const canDeleteShouts = currentUser && (
     currentUser.role === Role.ADMIN || 
@@ -148,68 +140,70 @@ const ForumPage: React.FC = () => {
                         </div>
                     </div>
                     
-                    <div ref={shoutboxRef} className="h-64 overflow-y-auto bg-[#111]/50 flex flex-col-reverse custom-scrollbar pr-1">
+                    <div ref={shoutboxRef} className="h-64 overflow-y-auto bg-[#111]/50 flex flex-col-reverse custom-scrollbar">
                         {shouts.length === 0 && (
                             <div className="flex-1 flex items-center justify-center text-gray-600 text-xs italic">No shouts yet. Be the first!</div>
                         )}
-                        {shouts.map((shout) => (
-                            <div key={shout.id} className="flex gap-2 items-center text-sm py-1.5 px-3 hover:bg-[#1a1a1d] transition-colors group border-b border-gray-800/20 last:border-0">
-                                <Link to={`/members/${shout.username}.${shout.uid}`} className="flex-shrink-0">
-                                    <div 
-                                        className="w-5 h-5 rounded-sm border border-gray-800 group-hover:border-[var(--accent-pink)] transition-colors overflow-hidden"
-                                        style={{ backgroundColor: shout.avatarColor || '#1a1a1d' }}
-                                    >
-                                        <img src={shout.avatarUrl} className="w-full h-full object-cover" alt="av" />
-                                    </div>
-                                </Link>
-                                
-                                {/* Shout Content Container */}
-                                <div className="flex-1 min-w-0 flex items-center gap-1.5 overflow-hidden">
-                                    <Link to={`/members/${shout.username}.${shout.uid}`} className={`font-bold text-xs ${getRoleColor(shout.role)} hover:underline whitespace-nowrap shrink-0`}>
-                                        {shout.username}:
+                        <div className="flex flex-col-reverse">
+                            {shouts.map((shout) => (
+                                <div key={shout.id} className="flex items-start gap-3 p-3 border-b border-gray-800/50 group hover:bg-white/5 transition-colors">
+                                    <Link to={`/members/${shout.username}.${shout.uid}`} className="flex-shrink-0">
+                                        <div 
+                                            className="w-8 h-8 rounded-md border border-gray-700 group-hover:border-[var(--accent-pink)] transition-colors overflow-hidden"
+                                            style={{ backgroundColor: shout.avatarColor || '#1a1a1d' }}
+                                        >
+                                            <img src={shout.avatarUrl} className="w-full h-full object-cover" alt="av" />
+                                        </div>
                                     </Link>
-                                    <span className="text-gray-300 text-xs shrink" title={shout.message}>
-                                        {shout.message}
-                                    </span>
+                                    
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-baseline justify-between">
+                                            <Link to={`/members/${shout.username}.${shout.uid}`} className={`font-bold text-sm ${getRoleColor(shout.role)} hover:underline`}>
+                                                {shout.username}
+                                            </Link>
+                                            <div className="flex items-center text-xs text-gray-600">
+                                                <span>{formatTimeAgo(shout.time)}</span>
+                                                {canDeleteShouts && (
+                                                    <button 
+                                                        onClick={() => handleDeleteShout(shout.id)} 
+                                                        className="text-gray-600 hover:text-red-500 ml-2 opacity-30 group-hover:opacity-100 transition-opacity" 
+                                                        title="Delete Shout"
+                                                    >
+                                                        <i className="ph-trash text-sm"></i>
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <p className="text-sm text-gray-300 break-words mt-0.5">
+                                            {shout.message}
+                                        </p>
+                                    </div>
                                 </div>
-                                <span className="text-[10px] text-gray-600 whitespace-nowrap shrink-0 ml-auto">
-                                    {formatTimeAgo(shout.time)}
-                                </span>
-                                {canDeleteShouts && (
-                                    <button 
-                                        onClick={() => handleDeleteShout(shout.id)} 
-                                        className="text-gray-600 hover:text-red-500 ml-2 opacity-0 group-hover:opacity-100 transition-opacity" 
-                                        title="Delete Shout"
-                                    >
-                                        <i className="ph-trash text-xs"></i>
-                                    </button>
-                                )}
-                            </div>
-                        ))}
+                            ))}
+                        </div>
                     </div>
 
                     <div className="p-3 bg-[#141416] border-t border-gray-800 shrink-0">
                         {currentUser ? (
-                            <div className="flex gap-2 relative">
+                            <form onSubmit={handlePostShout} className="flex gap-2 items-center">
                                 <input 
                                     type="text" 
                                     value={shoutInput}
                                     onChange={(e) => setShoutInput(e.target.value)}
-                                    onKeyDown={handleKeyDown}
                                     placeholder={cooldown > 0 ? `Wait ${cooldown}s...` : "What's on your mind?"}
-                                    className={`flex-1 bg-[#0d0d0f] border border-gray-700 rounded-sm pl-3 pr-10 py-2 text-sm text-gray-200 focus:outline-none focus:border-[var(--accent-pink)] transition-colors ${cooldown > 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    className={`flex-1 bg-[#0d0d0f] border border-gray-700 rounded-sm px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-[var(--accent-pink)] transition-colors ${cooldown > 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
                                     maxLength={200}
                                     disabled={cooldown > 0}
                                 />
                                 <button 
-                                    onClick={() => handlePostShout()} 
-                                    className={`absolute right-1 top-1/2 -translate-y-1/2 p-1.5 transition-colors ${cooldown > 0 ? 'text-gray-700 cursor-not-allowed' : 'text-gray-500 hover:text-[var(--accent-pink)]'}`}
-                                    title="Send"
-                                    disabled={cooldown > 0}
+                                    type="submit"
+                                    className={`px-4 py-2 rounded-sm transition-colors text-sm font-semibold ${!shoutInput.trim() || cooldown > 0 ? 'bg-[#1a1a1d] text-gray-600 cursor-not-allowed' : 'bg-[var(--accent-pink)] text-white hover:bg-opacity-80'}`}
+                                    title="Post"
+                                    disabled={!shoutInput.trim() || cooldown > 0}
                                 >
-                                    <i className="ph-paper-plane-right text-lg"></i>
+                                    Post
                                 </button>
-                            </div>
+                            </form>
                         ) : (
                              <div className="w-full text-center text-xs text-gray-500 py-2">
                                  <Link to="/login" className="text-[var(--accent-pink)] hover:underline">Log in</Link> to shout.
