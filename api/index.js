@@ -82,6 +82,7 @@ app.post('/api/auth/register', async (req, res) => {
 
 const mapUserFromDb = (user) => {
     if (!user) return null;
+    const isAdmin = user.role?.toLowerCase() === 'admin';
     return {
         uid: user.uid,
         username: user.username,
@@ -104,9 +105,10 @@ const mapUserFromDb = (user) => {
         banReason: user.ban_reason,
         priority: user.priority,
         permissions: {
-            canMute: Boolean(user.can_mute),
-            canBan: Boolean(user.can_ban),
-            canDeleteShouts: Boolean(user.can_delete_shouts)
+            // Admin gets all permissions automatically
+            canMute: isAdmin || Boolean(user.can_mute),
+            canBan: isAdmin || Boolean(user.can_ban),
+            canDeleteShouts: isAdmin || Boolean(user.can_delete_shouts)
         }
     };
 };
@@ -250,8 +252,9 @@ const verifyModeratorOrAdmin = async (req, res, next) => {
         if (users.length === 0) return res.status(403).json({ message: 'Forbidden: User not found' });
         
         const user = users[0];
-        // Allow admin or users with can_delete_shouts permission
-        const canDelete = user.role?.toLowerCase() === 'admin' || user.can_delete_shouts == 1;
+        // Admin gets all permissions automatically
+        const isAdmin = user.role?.toLowerCase() === 'admin';
+        const canDelete = isAdmin || user.can_delete_shouts == 1;
 
         if (!canDelete) return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
         
